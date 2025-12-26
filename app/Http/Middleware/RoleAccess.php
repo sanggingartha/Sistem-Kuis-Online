@@ -20,12 +20,12 @@ class RoleAccess
 
         if ($user->role === 'pengajar') {
             if (!str_starts_with($path, 'pengajar')) {
-                return redirect('/pengajar');
+                abort(404);
             }
         }
         if ($user->role === 'siswa') {
             if (str_starts_with($path, 'pengajar')) {
-                return redirect('/kode-kuis');
+                abort(404);
             }
         }
 

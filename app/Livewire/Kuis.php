@@ -3,107 +3,121 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use App\Models\HasilKuis;
-use App\Models\JawabanPilihanGanda;
-use App\Models\JawabanEssay;
+use App\Models\Kuis as KuisModel;
+use App\Models\SoalPilihanGanda;
 use App\Models\OpsiPilihanGanda;
+use App\Models\JawabanPilihanGanda;
+use App\Models\SoalEssay;
+use App\Models\JawabanEssay;
+use App\Models\HasilKuis;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 
 #[Layout('layouts.app')]
 class Kuis extends Component
 {
-    public HasilKuis $hasil;
-    public int $sisaDetik = 0;
+    public KuisModel $kuis;
+    public HasilKuis $hasilKuis;
 
-    public array $jawabanPG = [];
-    public array $jawabanEssay = [];
+    public $soalPG = [];
+    public $soalEssay = [];
+    public $currentIndex = 0;
+    public $currentType = 'pg'; // 'pg' atau 'essay'
+    public $jawabanSekarang = null;
 
-    protected $listeners = ['autoSubmit' => 'selesaikanKuis'];
-
-    public function mount($hasil)
+    public function mount(string $kode)
     {
-        $this->hasil = HasilKuis::with([
-            'kuis.soalPilihanGanda.opsi',
-            'kuis.soalEssay'
-        ])->findOrFail($hasil);
+        $this->kuis = KuisModel::where('kode_kuis', $kode)->firstOrFail();
 
-        abort_if($this->hasil->siswa_id !== Auth::id(), 403);
-        abort_if($this->hasil->status !== 'sedang_mengerjakan', 403);
-
-        $this->hitungSisaWaktu();
-    }
-
-    public function hitungSisaWaktu()
-    {
-        $selesai = $this->hasil->waktu_mulai
-            ->addMinutes($this->hasil->kuis->waktu_pengerjaan);
-
-        $this->sisaDetik = now()->diffInSeconds($selesai, false);
-
-        if ($this->sisaDetik <= 0) {
-            $this->selesaikanKuis();
+        // Validasi status & waktu
+        if ($this->kuis->status !== 'aktif') abort(403, 'Kuis belum aktif');
+        $now = now();
+        if (! $now->between($this->kuis->mulai_dari, $this->kuis->berakhir_pada)) {
+            abort(403, 'Kuis belum dimulai atau sudah selesai');
         }
+
+        $userId = Auth::id();
+
+        // Cek percobaan terakhir
+        $lastHasil = HasilKuis::where('kuis_id', $this->kuis->id)
+            ->where('user_id', $userId)
+            ->latest('percobaan_ke')
+            ->first();
+
+        if ($lastHasil && $lastHasil->status === 'sedang_mengerjakan') {
+            $this->hasilKuis = $lastHasil;
+        } else {
+            $percobaanKe = $lastHasil ? $lastHasil->percobaan_ke + 1 : 1;
+            $this->hasilKuis = HasilKuis::create([
+                'kuis_id' => $this->kuis->id,
+                'user_id' => $userId,
+                'percobaan_ke' => $percobaanKe,
+            ]);
+        }
+
+        // Ambil soal PG dan Essay
+        $this->soalPG = SoalPilihanGanda::with('opsi')->where('kuis_id', $this->kuis->id)->orderBy('urutan')->get()->toArray();
+        $this->soalEssay = SoalEssay::where('kuis_id', $this->kuis->id)->orderBy('urutan')->get()->toArray();
+
+        $this->currentType = !empty($this->soalPG) ? 'pg' : 'essay';
+        $this->currentIndex = 0;
+        $this->jawabanSekarang = '';
     }
 
-    public function pilihOpsi($soalId, $opsiId)
+    public function next()
     {
-        $this->jawabanPG[$soalId] = $opsiId;
-    }
-
-    public function selesaikanKuis()
-    {
-        if ($this->hasil->status !== 'sedang_mengerjakan') return;
-
-        $totalPG = 0;
-
-        foreach ($this->jawabanPG as $soalId => $opsiId) {
-            $opsi = OpsiPilihanGanda::find($opsiId);
-            $poin = ($opsi && $opsi->opsi_benar) ? $opsi->poin : 0;
-
+        if ($this->currentType === 'pg') {
+            $soal = $this->soalPG[$this->currentIndex];
             JawabanPilihanGanda::updateOrCreate(
                 [
-                    'hasil_kuis_id' => $this->hasil->id,
-                    'soal_id' => $soalId,
+                    'hasil_kuis_id' => $this->hasilKuis->id,
+                    'soal_id' => $soal['id'],
                 ],
                 [
-                    'opsi_id' => $opsiId,
-                    'poin_diperoleh' => $poin,
-                    'benar' => $poin > 0,
+                    'opsi_id' => $this->jawabanSekarang,
                 ]
             );
-
-            $totalPG += $poin;
-        }
-
-        foreach ($this->jawabanEssay as $soalId => $jawaban) {
+        } else {
+            $soal = $this->soalEssay[$this->currentIndex];
             JawabanEssay::updateOrCreate(
                 [
-                    'hasil_kuis_id' => $this->hasil->id,
-                    'soal_id' => $soalId,
+                    'hasil_kuis_id' => $this->hasilKuis->id,
+                    'soal_id' => $soal['id'],
                 ],
                 [
-                    'jawaban_siswa' => $jawaban,
+                    'jawaban_siswa' => $this->jawabanSekarang,
                 ]
             );
         }
 
-        $this->hasil->update([
-            'poin_pilgan' => $totalPG,
-            'poin_diperoleh' => $totalPG,
-            'status' => 'selesai',
-            'waktu_selesai' => now(),
-        ]);
+        $this->currentIndex++;
+        $this->jawabanSekarang = '';
 
-        $this->hasil->hitungDurasi();
-        $this->hasil->hitungPersentase();
+        // Jika PG habis, pindah ke Essay
+        if ($this->currentType === 'pg' && $this->currentIndex >= count($this->soalPG)) {
+            $this->currentIndex = 0;
+            $this->currentType = 'essay';
+        }
 
-        return redirect()->route('kode.kuis')
-            ->with('success', 'Kuis selesai');
+        // Jika semua selesai
+        if ($this->currentType === 'essay' && $this->currentIndex >= count($this->soalEssay)) {
+            session()->flash('success', 'Jawaban berhasil disimpan!');
+            $this->hasilKuis->update(['status' => 'selesai']);
+            return redirect()->route('kode.kuis');
+        }
     }
 
     public function render()
     {
-        return view('livewire.kuis');
+        $soalSekarang = null;
+        if ($this->currentType === 'pg') {
+            $soalSekarang = $this->soalPG[$this->currentIndex] ?? null;
+        } else {
+            $soalSekarang = $this->soalEssay[$this->currentIndex] ?? null;
+        }
+
+        return view('livewire.kuis', [
+            'soalSekarang' => $soalSekarang
+        ]);
     }
 }

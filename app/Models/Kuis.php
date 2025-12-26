@@ -81,7 +81,7 @@ class Kuis extends Model
     {
         $this->deleteQRCode();
 
-        $url = route('kuis.main', [
+        $url = route('kode.kuis', [
             'kode' => $this->kode_kuis,
         ]);
 

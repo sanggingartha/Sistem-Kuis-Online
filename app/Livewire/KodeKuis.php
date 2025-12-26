@@ -4,42 +4,51 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use App\Models\Kuis;
-use App\Models\HasilKuis;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Livewire\Attributes\Layout;
 
 #[Layout('layouts.app')]
 class KodeKuis extends Component
 {
-    public string $kode = '';
+    public ?Kuis $kuis = null;
+    public $kode_input = '';
+
+    public function mount(Request $request)
+    {
+        // QR scan
+        if ($request->filled('kode')) {
+            $this->kode_input = $request->kode;
+            $this->loadKuis();
+        }
+    }
+
+    public function loadKuis()
+    {
+        $this->kuis = Kuis::where('kode_kuis', $this->kode_input)->first();
+        if (!$this->kuis) {
+            session()->flash('error', 'Kode kuis tidak valid');
+        }
+    }
 
     public function mulaiKuis()
     {
-        $user = Auth::user();
+        if (!$this->kuis) {
+            session()->flash('error', 'Kode kuis tidak valid');
+            return;
+        }
 
-        $this->validate([
-            'kode' => 'required|min:4',
-        ]);
+        // Validasi status & waktu
+        if ($this->kuis->status !== 'aktif') {
+            session()->flash('error', 'Kuis belum aktif');
+            return;
+        }
 
-        $kuis = Kuis::aktif()
-            ->tersedia()
-            ->where('kode_kuis', strtoupper($this->kode))
-            ->firstOrFail();
+        if (! now()->between($this->kuis->mulai_dari, $this->kuis->berakhir_pada)) {
+            session()->flash('error', 'Kuis belum dimulai atau sudah selesai');
+            return;
+        }
 
-        $percobaanKe = HasilKuis::where('kuis_id', $kuis->id)
-            ->where('siswa_id', $user->id)
-            ->count() + 1;
-
-        $hasil = HasilKuis::create([
-            'kuis_id' => $kuis->id,
-            'siswa_id' => $user->id,
-            'waktu_mulai' => now(),
-            'total_poin' => $kuis->total_poin,
-            'status' => 'sedang_mengerjakan',
-            'percobaan_ke' => $percobaanKe,
-        ]);
-
-        return redirect()->route('kuis', $hasil->id);
+        return redirect()->route('kuis.mulai', $this->kuis->kode_kuis);
     }
 
     public function render()
