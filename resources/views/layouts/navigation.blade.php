@@ -1,4 +1,4 @@
-<!-- Top Banner -->
+{{-- <!-- Top Banner -->
 <div class="bg-purple-700 text-white text-center py-2 px-4">
     <div class="flex items-center justify-center gap-4 flex-wrap">
         <span class="font-semibold">DISKON 35% UNTUK BULAN OKTOBER</span>
@@ -6,7 +6,7 @@
             class="bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold px-3 py-1 rounded-full text-sm transition duration-300">
             DAPATKAN SEKARANG </a>
     </div>
-</div>
+</div> --}}
 
 <!-- Navigation -->
 <nav class="bg-white shadow-sm sticky top-0 z-50">
@@ -24,8 +24,7 @@
 
                 @if (Route::has('login'))
                     @auth
-                        {{-- <a href="{{ url('/quiz-login') }}"
-                            class="text-gray-900 hover:text-purple-700 font-medium transition">Mulai Kuis</a> --}}
+                        {{-- User sudah login, tampilkan link kuis --}}
                     @else
                         <a href="{{ route('login') }}"
                             class="text-gray-900 hover:text-purple-700 font-medium transition">MASUK</a>
@@ -63,53 +62,64 @@
                     </div>
                 </div>
 
-                <!-- Settings Dropdown -->
-                {{-- <div class="hidden sm:flex sm:items-center sm:ms-6">
-                    <x-dropdown align="right" width="48">
-                        <x-slot name="trigger">
-                            <button
-                                class="flex items-center text-sm font-medium text-gray-500 hover:text-gray-700
-                            hover:border-gray-300 focus:outline-none transition ease-in-out duration-150">
-                                {{-- <div>{{ Auth::user()->name }}</div> --}}
-                {{-- 
-                                <div class="ms-1">
-                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06
-                                        1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.25
-                                        8.29a.75.75 0 01-.02-1.08z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
+                <!-- User Dropdown (Desktop) -->
+                @auth
+                <div class="relative">
+                    <button id="desktop-user-btn"
+                        class="flex items-center gap-2 border border-gray-200 px-3 py-1.5 rounded-full hover:bg-gray-100 transition">
+                        <div class="flex items-center justify-center w-6 h-6 bg-purple-600 text-white rounded-full">
+                            <span class="text-xs font-semibold">
+                                {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                            </span>
+                        </div>
+                        <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div id="desktop-user-menu"
+                        class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible transform scale-95 transition-all duration-200">
+                        <a href="{{ route('profile.edit') }}" 
+                           class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition border-b border-gray-100">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            Edit Profile
+                        </a>
+                        <a href="{{ route('profile.edit') }}" 
+                            class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition duration-200 border-b border-gray-100">
+                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3M12 3a9 9 0 100 18 9 9 0 000-18z"></path>
+                                </svg>
+                                Riwayat Kuis
+                        </a>
+                        
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" 
+                                    class="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                Keluar
                             </button>
-                        </x-slot>
-
-                        <x-slot name="content">
-                            <x-dropdown-link :href="route('profile.edit')">
-                                {{-- {{ __('Profile') }} --}}
-                {{-- </x-dropdown-link> --}}
-
-                <!-- Authentication -->
-                {{-- <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-
-                                <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                    {{ __('Log Out') }}
-                                </x-dropdown-link>
-                            </form>
-                        </x-slot>
-                    </x-dropdown> --}}
-                {{-- </div> --}}
+                        </form>
+                    </div>
+                </div>
+                @endauth
             </div>
 
             <!-- Mobile Menu Button -->
             <div class="md:hidden flex items-center gap-3">
+                @guest
                 <button id="lang-toggle"
                     class="flex items-center gap-1 border border-gray-200 px-2 py-1 rounded-full hover:bg-gray-100 transition">
                     <img src="https://flagcdn.com/w20/id.png" alt="ID" class="w-5 h-4 rounded-sm">
                     <span class="text-sm font-medium">ID</span>
                 </button>
+                @endguest
 
                 <button id="menu-toggle" class="text-gray-900 hover:text-purple-700 focus:outline-none">
                     <svg id="menu-open" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -141,14 +151,73 @@
         <div class="flex flex-col p-4 space-y-3">
             <a href="/" class="text-gray-800 hover:text-purple-700 font-medium">Beranda</a>
             <a href="about" class="text-gray-800 hover:text-purple-700 font-medium">Tentang Kami</a>
-            {{-- @auth
-                <a href="{{ url('/quiz-login') }}" class="text-gray-800 hover:text-purple-700 font-medium">Mulai Kuis</a>
-            @endauth --}}
         </div>
     </div>
 
-    <div class="p-4 border-t border-gray-200 space-y-3">
-        @guest
+    <!-- Mobile Bottom Section -->
+    <div class="border-t border-gray-200 p-4">
+        @auth
+        <!-- User Section untuk Mobile -->
+        <div class="relative">
+            <button id="mobile-user-btn" 
+                    class="flex items-center w-full p-2 text-left hover:bg-gray-50 rounded-lg transition duration-200">
+                <!-- Avatar -->
+                <div class="flex items-center justify-center w-8 h-8 bg-purple-600 text-white rounded-full flex-shrink-0">
+                    <span class="text-sm font-semibold">
+                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                    </span>
+                </div>
+                
+                <!-- User Info -->
+                <div class="ml-3 flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate">
+                        {{ Auth::user()->name }}
+                    </p>
+                    <p class="text-xs text-gray-500 truncate">
+                        {{ Auth::user()->email }}
+                    </p>
+                </div>
+                
+                <!-- Dropdown Arrow -->
+                <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <!-- Mobile User Dropdown -->
+            <div id="mobile-user-dropdown" 
+                 class="absolute bottom-full left-0 mb-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible transform scale-95 transition-all duration-200 origin-bottom-right z-50">
+                
+                <a href="{{ route('profile.edit') }}" 
+                   class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition duration-200 border-b border-gray-100">
+                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    Edit Profile
+                </a>
+                <a href="{{ route('profile.edit') }}" 
+                   class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition duration-200 border-b border-gray-100">
+                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3M12 3a9 9 0 100 18 9 9 0 000-18z"></path>
+                    </svg>
+                    Riwayat Kuis
+                </a>
+                
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" 
+                            class="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition duration-200">
+                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Keluar
+                    </button>
+                </form>
+            </div>
+        </div>
+        @else
+        <!-- Login/Register Buttons untuk Guest -->
+        <div class="space-y-3">
             <a href="{{ route('login') }}"
                 class="block text-center border border-purple-700 text-purple-700 hover:bg-purple-700 hover:text-white font-semibold py-2 rounded-lg transition duration-300">
                 MASUK
@@ -157,7 +226,8 @@
                 class="block text-center bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold py-2 rounded-lg transition duration-300">
                 DAFTAR
             </a>
-        @endguest
+        </div>
+        @endauth
     </div>
 </div>
 
@@ -185,22 +255,65 @@
             menuClose.classList.add('hidden');
         });
 
-        // Dropdown Bahasa
+        // Dropdown Bahasa Desktop
         const langBtn = document.getElementById('lang-btn');
         const langMenu = document.getElementById('lang-menu');
 
-        langBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            langMenu.classList.toggle('opacity-0');
-            langMenu.classList.toggle('invisible');
-            langMenu.classList.toggle('scale-95');
-        });
+        if (langBtn && langMenu) {
+            langBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                langMenu.classList.toggle('opacity-0');
+                langMenu.classList.toggle('invisible');
+                langMenu.classList.toggle('scale-95');
+            });
 
-        // Klik di luar untuk menutup dropdown
-        document.addEventListener('click', (e) => {
-            if (!langMenu.contains(e.target) && !langBtn.contains(e.target)) {
-                langMenu.classList.add('opacity-0', 'invisible', 'scale-95');
-            }
-        });
+            document.addEventListener('click', (e) => {
+                if (!langMenu.contains(e.target) && !langBtn.contains(e.target)) {
+                    langMenu.classList.add('opacity-0', 'invisible', 'scale-95');
+                }
+            });
+        }
+
+        // Dropdown User Desktop
+        const desktopUserBtn = document.getElementById('desktop-user-btn');
+        const desktopUserMenu = document.getElementById('desktop-user-menu');
+
+        if (desktopUserBtn && desktopUserMenu) {
+            desktopUserBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                desktopUserMenu.classList.toggle('opacity-0');
+                desktopUserMenu.classList.toggle('invisible');
+                desktopUserMenu.classList.toggle('scale-95');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!desktopUserMenu.contains(e.target) && !desktopUserBtn.contains(e.target)) {
+                    desktopUserMenu.classList.add('opacity-0', 'invisible', 'scale-95');
+                }
+            });
+        }
+
+        // Dropdown User Mobile
+        const mobileUserBtn = document.getElementById('mobile-user-btn');
+        const mobileUserDropdown = document.getElementById('mobile-user-dropdown');
+
+        if (mobileUserBtn && mobileUserDropdown) {
+            mobileUserBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                mobileUserDropdown.classList.toggle('opacity-0');
+                mobileUserDropdown.classList.toggle('invisible');
+                mobileUserDropdown.classList.toggle('scale-95');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!mobileUserDropdown.contains(e.target) && !mobileUserBtn.contains(e.target)) {
+                    mobileUserDropdown.classList.add('opacity-0', 'invisible', 'scale-95');
+                }
+            });
+
+            mobileUserDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
     });
 </script>

@@ -5,12 +5,34 @@ use App\Http\Middleware\RoleAccess;
 use App\Livewire\KodeKuis;
 use App\Livewire\Kuis as LivewireKuis;
 use App\Models\Kuis;
+use App\Services\GeminiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Models\JawabanEssay;
 
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+// Route Tentang Kami
+Route::get('/about', function () {
+    return view('about');
+})->name('about');
+
+//  Route Gemini AI
+Route::get('/test-gemini', function (GeminiService $gemini) {
+    $result = $gemini->testConnection();
+    return response()->json($result);
+});
+
+// Test Nilai Essay (hanya untuk development)
+Route::middleware('auth')->get('/test-nilai-essay/{id}', function (string $id, GeminiService $gemini) {
+    $jawaban = JawabanEssay::findOrFail($id);
+    
+    $result = $gemini->nilaiJawabanEssay($jawaban);
+    
+    return response()->json($result);
+});
 
 // QR preview untuk pengajar
 Route::get('/kuis/{kuis}/qr-code-preview', function (Kuis $kuis) {
