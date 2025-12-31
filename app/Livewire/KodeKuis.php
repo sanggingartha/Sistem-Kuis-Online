@@ -7,7 +7,7 @@ use App\Models\Kuis;
 use Illuminate\Http\Request;
 use Livewire\Attributes\Layout;
 
-#[Layout('layouts.app')]
+#[Layout('layouts.sidebar')]
 class KodeKuis extends Component
 {
     public ?Kuis $kuis = null;

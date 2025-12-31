@@ -34,12 +34,12 @@
             <!-- Navigation Menu -->
             <div class="flex flex-col p-4 space-y-2 flex-1">
                 <!-- Mulai Kuis -->
-                <a href="{{ route('quiz.login') }}"
-                    class="flex items-center text-gray-800 hover:text-purple-700 font-medium transition duration-300 py-3 px-3 rounded-lg {{ request()->routeIs('quiz.login') ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50' }}">
+                <a href="{{ route('kode.kuis') }}"
+                    class="flex items-center text-gray-800 font-medium transition duration-300 py-3 px-3 rounded-lg
+                    {{ request()->routeIs('kode.kuis') ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50 hover:text-purple-700' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                        </path>
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                     </svg>
                     Mulai Kuis
                 </a>
@@ -125,10 +125,12 @@
             <header class="bg-white shadow flex-shrink-0">
                 <div class="flex items-center justify-between px-4 sm:px-6 py-4">
                     <h2 class="text-lg font-semibold text-gray-800 truncate">
-                        @if (request()->routeIs('quiz.login'))
+                        @if (request()->routeIs('kode.kuis'))
                             Masuk Kuis
-                        @elseif(request()->routeIs('quiz.history'))
-                            Riwayat Kuis
+                        @elseif (request()->routeIs('kuis.mulai'))
+                            Mengerjakan Kuis
+                        @elseif (request()->routeIs('kuis.result-kuis'))
+                            Hasil Kuis
                         @else
                             WANAQUIZ
                         @endif

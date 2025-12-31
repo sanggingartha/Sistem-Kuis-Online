@@ -50,63 +50,90 @@
         </div>
     </div>
 
-    <!-- Soal Pilihan Ganda -->
-    @if ($currentType === 'pg' && $soalSekarang)
+    <!-- SEMUA Soal Pilihan Ganda -->
+    @if ($currentType === 'pg' && count($soalPG) > 0)
         <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
             <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
                 <div>
                     <h2 class="text-xl font-bold text-purple-900">Soal Pilihan Ganda</h2>
-                    <p class="text-gray-600 text-sm mt-1">Pilih satu jawaban yang paling tepat</p>
+                    <p class="text-gray-600 text-sm mt-1">Pilih satu jawaban yang paling tepat untuk setiap soal</p>
                 </div>
                 <div class="px-4 py-2 bg-purple-100 rounded-lg">
-                    <span class="text-purple-700 font-bold text-sm">PG</span>
+                    <span class="text-purple-700 font-bold text-sm">{{ count($soalPG) }} Soal</span>
                 </div>
             </div>
 
-            <!-- Pertanyaan -->
-            <div class="mb-8">
-                <div class="flex items-start gap-4 mb-6">
-                    <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-800 text-white font-bold text-lg flex-shrink-0 shadow-lg">
-                        {{ $currentIndex + 1 }}
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 leading-relaxed">
-                            {{ $soalSekarang['pertanyaan'] }}
-                        </h3>
-                    </div>
-                </div>
-                
-                <!-- Opsi Jawaban -->
-                <div class="space-y-3 ml-16">
-                    @foreach ($soalSekarang['opsi'] as $opsi)
-                        <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition duration-200 {{ $jawabanSekarang == $opsi['id'] ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50' }}">
-                            <input 
-                                type="radio" 
-                                wire:model="jawabanSekarang" 
-                                value="{{ $opsi['id'] }}"
-                                class="w-5 h-5 text-purple-600 focus:ring-purple-500 border-gray-300"
-                            >
-                            <div class="ml-3 flex-1">
-                                <span class="text-gray-800 font-medium">{{ $opsi['teks_opsi'] }}</span>
+            <!-- Loop semua soal PG -->
+            <div class="space-y-8">
+                @foreach ($soalPG as $index => $soal)
+                    <div class="pb-6 {{ $index < count($soalPG) - 1 ? 'border-b-2 border-gray-100' : '' }}">
+                        <!-- Pertanyaan -->
+                        <div class="flex items-start gap-4 mb-4">
+                            <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-800 text-white font-bold text-lg flex-shrink-0 shadow-lg">
+                                {{ $index + 1 }}
                             </div>
-                        </label>
-                    @endforeach
-                </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-gray-900 leading-relaxed">
+                                    {!! $soal['pertanyaan'] !!}
+                                </h3>
+                                
+                                @if (!empty($soal['gambar_url']))
+                                    <div class="mt-3">
+                                        <img src="{{ asset('storage/' . $soal['gambar_url']) }}" 
+                                             alt="Gambar Soal" 
+                                             class="max-w-md rounded-lg shadow-md">
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <!-- Opsi Jawaban -->
+                        <div class="space-y-3 ml-16">
+                            @foreach ($soal['opsi'] as $opsi)
+                                <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition duration-200 
+                                    {{ (isset($jawabanSekarang[$soal['id']]) && $jawabanSekarang[$soal['id']] == $opsi['id']) 
+                                        ? 'border-purple-600 bg-purple-50' 
+                                        : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50' }}">
+                                    <input 
+                                        type="radio" 
+                                        name="soal_{{ $soal['id'] }}"
+                                        wire:model="jawabanSekarang.{{ $soal['id'] }}" 
+                                        value="{{ $opsi['id'] }}"
+                                        class="w-5 h-5 text-purple-600 focus:ring-purple-500 border-gray-300"
+                                    >
+                                    <div class="ml-3 flex-1">
+                                        <span class="text-gray-800 font-medium">{{ $opsi['teks_opsi'] }}</span>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
             </div>
 
-            <!-- Button Next -->
-            <div class="flex justify-end pt-4 border-t-2 border-gray-200">
+            <!-- Button Lanjut ke Essay -->
+            <div class="flex justify-end pt-6 border-t-2 border-gray-200 mt-6">
                 <button 
-                    wire:click="next"
-                    class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300 transition duration-300 transform hover:scale-[1.02]"
+                    wire:click="lanjutKeEssay"
+                    class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300 transition duration-300 transform hover:scale-[1.02] flex items-center gap-2"
                 >
-                    LANJUT
+                    @if (count($soalEssay) > 0)
+                        <span>LANJUTKAN KE ESSAY</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    @else
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>KUMPULKAN JAWABAN</span>
+                    @endif
                 </button>
             </div>
         </div>
     @endif
 
-    <!-- Soal Essay -->
+    <!-- Soal Essay (tetap satu per satu) -->
     @if ($currentType === 'essay' && $soalSekarang)
         <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
             <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
@@ -115,7 +142,7 @@
                     <p class="text-gray-600 text-sm mt-1">Tulis jawaban dengan jelas dan lengkap</p>
                 </div>
                 <div class="px-4 py-2 bg-green-100 rounded-lg">
-                    <span class="text-green-700 font-bold text-sm">ESSAY</span>
+                    <span class="text-green-700 font-bold text-sm">ESSAY {{ $currentIndex + 1 }}/{{ count($soalEssay) }}</span>
                 </div>
             </div>
 
@@ -127,8 +154,16 @@
                     </div>
                     <div class="flex-1">
                         <h3 class="text-lg font-semibold text-gray-900 leading-relaxed">
-                            {{ $soalSekarang['pertanyaan'] }}
+                            {!! $soalSekarang['pertanyaan'] !!}
                         </h3>
+                        
+                        @if (!empty($soalSekarang['gambar_url']))
+                            <div class="mt-3">
+                                <img src="{{ asset('storage/' . $soalSekarang['gambar_url']) }}" 
+                                     alt="Gambar Soal" 
+                                     class="max-w-md rounded-lg shadow-md">
+                            </div>
+                        @endif
                     </div>
                 </div>
                 

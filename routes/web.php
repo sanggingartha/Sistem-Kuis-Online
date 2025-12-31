@@ -46,6 +46,9 @@ Route::middleware(['auth', RoleAccess::class])->group(function () {
 
     // Halaman mengerjakan kuis
     Route::get('/kuis/{kode}', LivewireKuis::class)->name('kuis.mulai');
+    
+    //  Halaman result kuis
+    Route::get('/kuis/result-kuis/{hasil}', \App\Livewire\ResultKuis::class)->name('kuis.result-kuis');
 
     // Profile (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
