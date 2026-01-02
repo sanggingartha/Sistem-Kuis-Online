@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\RoleAccess;
 use App\Livewire\KodeKuis;
 use App\Livewire\Kuis as LivewireKuis;
+use App\Livewire\LihatNilai;
 use App\Models\Kuis;
 use App\Services\GeminiService;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,12 @@ Route::middleware(['auth', RoleAccess::class])->group(function () {
     
     //  Halaman result kuis
     Route::get('/kuis/result-kuis/{hasil}', \App\Livewire\ResultKuis::class)->name('kuis.result-kuis');
+    
+    // Halaman lihat nilai (BARU)
+    Route::get('/kuis/lihat-nilai/{hasil}', LihatNilai::class)->name('kuis.lihat-nilai');
+
+    // Halaman Riwayat Kuis
+    Route::get('/riwayat-kuis', \App\Livewire\RiwayatKuis::class)->name('riwayat.kuis');
 
     // Profile (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

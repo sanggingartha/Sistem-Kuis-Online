@@ -30,7 +30,33 @@ class PengajarPanelProvider extends PanelProvider
             ->path('pengajar')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => [
+                    50 => '#faf5ff',
+                    100 => '#f3e8ff',
+                    200 => '#e9d5ff',
+                    300 => '#d8b4fe',
+                    400 => '#c084fc',
+                    500 => '#a855f7',
+                    600 => '#9333ea',
+                    700 => '#7c3aed',
+                    800 => '#6d28d9',
+                    900 => '#5b21b6',
+                    950 => '#4c1d95',
+                ],
+                'warning' => Color::Yellow,
+                'success' => Color::Green,
+                'danger' => Color::Red,
+                'info' => Color::Blue,
+            ])
+            ->font('Figtree')
+            ->brandName('WanaQuiz')
+            ->brandLogo(asset('images/logo.png'))
+            ->brandLogoHeight('2.5rem')
+            ->favicon(asset('images/favicon.ico'))
+            ->sidebarCollapsibleOnDesktop()
+            ->navigationGroups([
+                'Kuis Management',
+                'Penilaian',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
@@ -56,6 +82,7 @@ class PengajarPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->viteTheme('resources/css/filament/pengajar/theme.css');
     }
 }

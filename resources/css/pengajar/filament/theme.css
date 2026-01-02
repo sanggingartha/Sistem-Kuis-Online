@@ -1,0 +1,283 @@
+@import '/vendor/filament/filament/resources/css/theme.css';
+
+@config '../../../tailwind.config.js';
+
+/* ===== WanaQuiz Custom Theme ===== */
+
+/* Font Import */
+@import url('https://fonts.bunny.net/css?family=figtree:400,600,700,800&display=swap');
+
+/* Custom Gradient Purple - sesuai welcome.blade.php */
+.gradient-purple {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+}
+
+/* Float Animation */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.float-animation {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Pulse Scale Animation */
+@keyframes pulse-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.pulse-hover:hover {
+    animation: pulse-scale 0.6s ease-in-out;
+}
+
+/* ===== Override Filament Components ===== */
+
+/* Primary Button - Gradient Purple */
+.fi-btn-primary,
+.fi-btn[data-color="primary"] {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    border-radius: 9999px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+}
+
+.fi-btn-primary:hover,
+.fi-btn[data-color="primary"]:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Warning Button - Yellow */
+.fi-btn-warning,
+.fi-btn[data-color="warning"] {
+    background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%) !important;
+    color: #7C3AED !important;
+    font-weight: 700 !important;
+    border-radius: 9999px !important;
+    transition: all 0.3s ease !important;
+}
+
+.fi-btn-warning:hover,
+.fi-btn[data-color="warning"]:hover {
+    background: linear-gradient(135deg, #FCD34D 0%, #FBBF24 100%) !important;
+    transform: scale(1.05) !important;
+}
+
+/* Success Button - Green */
+.fi-btn-success,
+.fi-btn[data-color="success"] {
+    background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%) !important;
+    border-radius: 9999px !important;
+}
+
+/* Card/Section - Rounded dengan hover effect */
+.fi-section,
+.fi-fo-section,
+.fi-card {
+    border-radius: 1.5rem !important;
+    border: 2px solid transparent !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+}
+
+.fi-section:hover,
+.fi-fo-section:hover,
+.fi-card:hover {
+    border-color: rgb(233 213 255) !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Badge - Rounded penuh dengan bold */
+.fi-badge {
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    padding: 0.5rem 1rem !important;
+}
+
+/* Table - Rounded corners */
+.fi-ta,
+.fi-ta-ctn {
+    border-radius: 1.5rem !important;
+    overflow: hidden !important;
+}
+
+.fi-ta-header-cell {
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%) !important;
+    color: #7C3AED !important;
+}
+
+/* Sidebar - Purple gradient */
+.fi-sidebar {
+    background: linear-gradient(180deg, #7C3AED 0%, #6D28D9 100%) !important;
+}
+
+.fi-sidebar-nav-item {
+    border-radius: 0.75rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.fi-sidebar-nav-item:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    transform: translateX(5px) !important;
+}
+
+.fi-sidebar-nav-item.fi-active {
+    background: rgba(251, 191, 36, 0.2) !important;
+    font-weight: 700 !important;
+}
+
+/* Input Fields - Rounded */
+.fi-input,
+.fi-select,
+.fi-textarea {
+    border-radius: 0.75rem !important;
+    border: 2px solid #E9D5FF !important;
+    transition: all 0.3s ease !important;
+}
+
+.fi-input:focus,
+.fi-select:focus,
+.fi-textarea:focus {
+    border-color: #7C3AED !important;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1) !important;
+}
+
+/* Modal - Rounded corners */
+.fi-modal-content {
+    border-radius: 1.5rem !important;
+}
+
+/* Notification - Rounded */
+.fi-notification {
+    border-radius: 1rem !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Tabs - Rounded active tab */
+.fi-tabs-item {
+    border-radius: 0.75rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.fi-tabs-item[aria-selected="true"] {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+/* Wizard - Purple progress */
+.fi-wi-step.fi-active .fi-wi-step-icon {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+}
+
+.fi-wi-step.fi-completed .fi-wi-step-icon {
+    background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%) !important;
+}
+
+/* Action Button Icons */
+.fi-ac-btn-icon {
+    transition: all 0.3s ease !important;
+}
+
+.fi-ac-btn:hover .fi-ac-btn-icon {
+    transform: scale(1.1) !important;
+}
+
+/* Header */
+.fi-topbar {
+    background: white !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Brand Logo Area */
+.fi-logo {
+    transition: all 0.3s ease !important;
+}
+
+.fi-logo:hover {
+    transform: scale(1.05) !important;
+}
+
+/* Stats Widget */
+.fi-wi-stats-overview-stat {
+    border-radius: 1.5rem !important;
+    background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%) !important;
+    border: 2px solid #7C3AED !important;
+    transition: all 0.3s ease !important;
+}
+
+.fi-wi-stats-overview-stat:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Login Page */
+.fi-simple-page {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+}
+
+.fi-simple-main {
+    background: white !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+}
+
+/* Repeater - Better spacing */
+.fi-fo-repeater-item {
+    border-radius: 1rem !important;
+    border: 2px solid #E9D5FF !important;
+    transition: all 0.3s ease !important;
+}
+
+.fi-fo-repeater-item:hover {
+    border-color: #7C3AED !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Toggle Switch */
+.fi-fo-toggle input:checked + div {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+}
+
+/* Dropdown Menu */
+.fi-dropdown-list {
+    border-radius: 1rem !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1) !important;
+}
+
+.fi-dropdown-list-item:hover {
+    background: #F3E8FF !important;
+    color: #7C3AED !important;
+}
+
+/* Pagination */
+.fi-pagination-btn {
+    border-radius: 0.75rem !important;
+}
+
+.fi-pagination-btn[aria-current="page"] {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+    color: white !important;
+}
+
+/* File Upload */
+.fi-fo-file-upload-ctn {
+    border-radius: 1rem !important;
+    border: 2px dashed #7C3AED !important;
+}
+
+/* Rich Editor */
+.tiptap {
+    border-radius: 0.75rem !important;
+    border: 2px solid #E9D5FF !important;
+}
+
+.tiptap:focus {
+    border-color: #7C3AED !important;
+}   

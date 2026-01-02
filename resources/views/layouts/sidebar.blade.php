@@ -45,7 +45,7 @@
                 </a>
 
                 <!-- Riwayat -->
-                <a href=""
+                <a href="{{ route('riwayat.kuis') }}"
                     class="flex items-center text-gray-800 hover:text-purple-700 font-medium transition duration-300 py-3 px-3 rounded-lg {{ request()->routeIs('quiz.history') ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

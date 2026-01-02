@@ -88,7 +88,7 @@
                             </svg>
                             Edit Profile
                         </a>
-                        <a href="{{ route('profile.edit') }}" 
+                        <a href="{{ route('riwayat.kuis') }}" 
                             class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition duration-200 border-b border-gray-100">
                                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3M12 3a9 9 0 100 18 9 9 0 000-18z"></path>
