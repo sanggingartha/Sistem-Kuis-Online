@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\Kuis;
 use Illuminate\Http\Request;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 
 #[Layout('layouts.sidebar')]
 class KodeKuis extends Component
@@ -13,6 +14,12 @@ class KodeKuis extends Component
     public ?Kuis $kuis = null;
     public $kode_input = '';
 
+    #[On('qr-scanned')]
+    public function qrScanned($kode)
+    {
+        $this->kode_input = $kode;
+        $this->loadKuis();
+    }
     public function mount(Request $request)
     {
         // QR scan

@@ -25,7 +25,6 @@ class PengajarPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->default()
             ->id('pengajar')
             ->path('pengajar')
             ->login()
@@ -82,7 +81,6 @@ class PengajarPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])
-            ->viteTheme('resources/css/filament/pengajar/theme.css');
+            ]);
     }
 }

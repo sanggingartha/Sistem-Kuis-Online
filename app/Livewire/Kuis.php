@@ -25,7 +25,7 @@ class Kuis extends Component
     public $soalEssay = [];
     public $currentIndex = 0;
     public $currentType = 'pg'; // 'pg' atau 'essay'
-    
+
     // Array untuk menyimpan jawaban PG (key = soal_id, value = opsi_id)
     public $jawabanSekarang = [];
 
@@ -66,7 +66,7 @@ class Kuis extends Component
             ->orderBy('urutan')
             ->get()
             ->toArray();
-            
+
         $this->soalEssay = SoalEssay::where('kuis_id', $this->kuis->id)
             ->orderBy('urutan')
             ->get()
@@ -75,14 +75,14 @@ class Kuis extends Component
         // Tentukan tipe soal pertama
         $this->currentType = !empty($this->soalPG) ? 'pg' : 'essay';
         $this->currentIndex = 0;
-        
+
         // Initialize jawabanSekarang sebagai array untuk PG atau string untuk essay
         if ($this->currentType === 'pg') {
             $this->jawabanSekarang = [];
         } else {
             $this->jawabanSekarang = '';
         }
-        
+
         // Load jawaban sebelumnya jika ada (untuk resume)
         $this->loadExistingAnswer();
     }
@@ -94,7 +94,7 @@ class Kuis extends Component
             $jawabanPGExisting = JawabanPilihanGanda::where('hasil_kuis_id', $this->hasilKuis->id)
                 ->get()
                 ->keyBy('soal_id');
-            
+
             // Hanya load jawaban yang memang sudah pernah disimpan di database
             foreach ($this->soalPG as $soal) {
                 if (isset($jawabanPGExisting[$soal['id']]) && $jawabanPGExisting[$soal['id']]->opsi_id) {
@@ -107,7 +107,7 @@ class Kuis extends Component
             $jawaban = JawabanEssay::where('hasil_kuis_id', $this->hasilKuis->id)
                 ->where('soal_id', $soal['id'])
                 ->first();
-            
+
             if ($jawaban) {
                 $this->jawabanSekarang = $jawaban->jawaban_siswa;
             } else {
@@ -139,9 +139,9 @@ class Kuis extends Component
         // Essay
         if ($this->currentType === 'essay') {
             $this->simpanJawabanEssay();
-            
+
             $this->currentIndex++;
-            
+
             // Jika masih ada essay
             if ($this->currentIndex < count($this->soalEssay)) {
                 $this->jawabanSekarang = '';
@@ -156,7 +156,7 @@ class Kuis extends Component
     protected function simpanJawabanPG()
     {
         if (empty($this->soalPG)) return;
-        
+
         // Simpan semua jawaban PG yang sudah dipilih
         foreach ($this->soalPG as $soal) {
             if (isset($this->jawabanSekarang[$soal['id']])) {
@@ -177,9 +177,9 @@ class Kuis extends Component
     protected function simpanJawabanEssay()
     {
         if (!isset($this->soalEssay[$this->currentIndex])) return;
-        
+
         $soal = $this->soalEssay[$this->currentIndex];
-        
+
         JawabanEssay::updateOrCreate(
             [
                 'hasil_kuis_id' => $this->hasilKuis->id,
@@ -221,7 +221,6 @@ class Kuis extends Component
 
             // 2. Trigger AI untuk nilai essay
             $this->nilaiEssayDenganAI();
-
         } catch (\Exception $e) {
             Log::error('Error proses selesai kuis', [
                 'hasil_kuis_id' => $this->hasilKuis->id,
@@ -243,12 +242,12 @@ class Kuis extends Component
             foreach ($jawabanPG as $jawaban) {
                 if ($jawaban->opsi && $jawaban->opsi->opsi_benar) {
                     $poin = $jawaban->soal->poin ?? 0;
-                    
+
                     $jawaban->update([
                         'poin_diperoleh' => $poin,
                         'benar' => true,
                     ]);
-                    
+
                     $totalPoinPG += $poin;
                 } else {
                     $jawaban->update([
@@ -263,7 +262,7 @@ class Kuis extends Component
                 'poin_pilgan' => $totalPoinPG,
                 'poin_diperoleh' => $totalPoinPG,
             ]);
-            
+
             // Hitung persentase sementara
             $this->hasilKuis->hitungPersentase();
 
@@ -271,7 +270,6 @@ class Kuis extends Component
                 'hasil_kuis_id' => $this->hasilKuis->id,
                 'total_poin_pg' => $totalPoinPG
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error hitung poin PG', [
                 'hasil_kuis_id' => $this->hasilKuis->id,
@@ -284,7 +282,7 @@ class Kuis extends Component
     {
         try {
             $geminiService = app(GeminiService::class);
-            
+
             $jawabanEssays = JawabanEssay::where('hasil_kuis_id', $this->hasilKuis->id)
                 ->where('status_penilaian', 'belum_dinilai')
                 ->get();
@@ -305,10 +303,10 @@ class Kuis extends Component
                 try {
                     // Update status menjadi sedang proses
                     $jawaban->update(['status_penilaian' => 'sedang_proses']);
-                    
+
                     // Panggil AI untuk menilai
                     $result = $geminiService->nilaiJawabanEssay($jawaban);
-                    
+
                     if ($result['success']) {
                         Log::info('Essay dinilai AI', [
                             'jawaban_id' => $jawaban->id,
@@ -320,30 +318,28 @@ class Kuis extends Component
                             'jawaban_id' => $jawaban->id,
                             'error' => $result['error'] ?? 'Unknown error'
                         ]);
-                        
+
                         $jawaban->update(['status_penilaian' => 'error']);
                     }
-
                 } catch (\Exception $e) {
                     Log::error('Exception saat nilai essay', [
                         'jawaban_id' => $jawaban->id,
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString()
                     ]);
-                    
+
                     $jawaban->update(['status_penilaian' => 'error']);
                 }
             }
 
             // Refresh hasil kuis untuk ambil poin terbaru
             $this->hasilKuis->refresh();
-            
+
             Log::info('Penilaian AI selesai', [
                 'hasil_kuis_id' => $this->hasilKuis->id,
                 'poin_diperoleh' => $this->hasilKuis->poin_diperoleh,
                 'persentase' => $this->hasilKuis->persentase
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error AI Grading Service', [
                 'hasil_kuis_id' => $this->hasilKuis->id,

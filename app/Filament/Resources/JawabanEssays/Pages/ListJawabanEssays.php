@@ -16,7 +16,6 @@ class ListJawabanEssays extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            // Action untuk menilai ulang jawaban yang error
             Action::make('nilaiUlangError')
                 ->label('Nilai Ulang Error')
                 ->icon('heroicon-o-arrow-path')
@@ -24,10 +23,10 @@ class ListJawabanEssays extends ListRecords
                 ->requiresConfirmation()
                 ->action(function (GeminiService $gemini) {
                     $errorJawaban = \App\Models\JawabanEssay::where('status_penilaian', 'error')->get();
-                    
+
                     $success = 0;
                     $failed = 0;
-                    
+
                     foreach ($errorJawaban as $jawaban) {
                         $result = $gemini->nilaiJawabanEssay($jawaban);
                         if ($result['success']) {
@@ -36,15 +35,13 @@ class ListJawabanEssays extends ListRecords
                             $failed++;
                         }
                     }
-                    
+
                     Notification::make()
                         ->title('Penilaian Selesai')
                         ->body("Berhasil: {$success}, Gagal: {$failed}")
                         ->success()
                         ->send();
                 }),
-                
-            CreateAction::make(),
         ];
     }
 }

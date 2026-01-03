@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.fi-btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+}
