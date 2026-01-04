@@ -1,124 +1,4 @@
-<div class="max-w-4xl mx-auto px-4 py-6" 
-x-data="{
-    sisaWaktu: {{ max(0, (int) $sisaWaktu) }},
-    warna: 'normal',
-    interval: null,
-    syncInterval: null,
-    isSubmitting: false,
-    lastSync: Date.now(),
-    livewireReady: false,
-    
-    init() {
-        console.log('=== TIMER INIT ===');
-        console.log('Sisa waktu:', this.sisaWaktu, 'detik');
-        
-        // Check waktu habis
-        if (this.sisaWaktu <= 0) {
-            console.error('Waktu habis!');
-            setTimeout(() => this.waktuHabis(), 500);
-            return;
-        }
-        
-        // Wait for Livewire then start timer
-        this.waitForLivewire();
-    },
-    
-    waitForLivewire() {
-        const check = () => {
-            if (typeof Livewire !== 'undefined' && window.Livewire && this.$wire) {
-                this.livewireReady = true;
-                console.log('Livewire ready!');
-                this.updateTimer();
-                this.startTimer();
-            } else {
-                setTimeout(check, 100);
-            }
-        };
-        check();
-    },
-    
-    startTimer() {
-        // Timer countdown
-        this.interval = setInterval(() => {
-            if (this.sisaWaktu > 0 && !this.isSubmitting) {
-                this.sisaWaktu--;
-                this.updateTimer();
-                
-                if (this.sisaWaktu % 30 === 0) {
-                    console.log('Sisa:', this.sisaWaktu, 'detik');
-                }
-            } else if (this.sisaWaktu <= 0 && !this.isSubmitting) {
-                clearInterval(this.interval);
-                this.waktuHabis();
-            }
-        }, 1000);
-        
-        // Sync with server
-        this.syncInterval = setInterval(() => {
-            if (!this.isSubmitting && this.livewireReady) {
-                this.syncWithServer();
-            }
-        }, 30000);
-    },
-    
-    updateTimer() {
-        const menit = Math.floor(this.sisaWaktu / 60);
-        const detik = this.sisaWaktu % 60;
-        const tampilan = String(menit).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
-        
-        const el = document.getElementById('timer-display');
-        if (el) el.textContent = tampilan;
-        
-        if (this.sisaWaktu <= 60) this.warna = 'kritis';
-        else if (this.sisaWaktu <= 300) this.warna = 'peringatan';
-        else this.warna = 'normal';
-    },
-    
-    async syncWithServer() {
-        try {
-            const now = Date.now();
-            if (now - this.lastSync < 25000) return;
-            
-            this.lastSync = now;
-            const result = await this.$wire.syncTimer();
-            
-            if (result && result.status === 'active') {
-                const diff = Math.abs(this.sisaWaktu - result.sisaWaktu);
-                if (diff > 10) {
-                    this.sisaWaktu = result.sisaWaktu;
-                    this.updateTimer();
-                }
-            } else if (result && result.status === 'expired') {
-                this.sisaWaktu = 0;
-                this.waktuHabis();
-            }
-        } catch (error) {
-            console.error('Sync error:', error);
-        }
-    },
-    
-    stopTimer() {
-        if (this.interval) clearInterval(this.interval);
-        if (this.syncInterval) clearInterval(this.syncInterval);
-    },
-    
-    async waktuHabis() {
-        if (this.isSubmitting) return;
-        if (!this.livewireReady || !this.$wire) {
-            window.location.reload();
-            return;
-        }
-        
-        this.isSubmitting = true;
-        this.stopTimer();
-        
-        try {
-            await this.$wire.waktuHabis();
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-}">
+<div class="max-w-4xl mx-auto px-4 py-6">
 
     <!-- Messages -->
     @if (session()->has('success'))
@@ -161,34 +41,13 @@ x-data="{
             </div>
 
             <!-- Timer -->
-            <div class="flex items-center gap-3 px-6 py-4 rounded-xl border-2 shadow-lg transition-all"
-                :class="{
-                    'bg-purple-50 border-purple-200': warna === 'normal',
-                    'bg-yellow-50 border-yellow-300': warna === 'peringatan',
-                    'bg-red-50 border-red-400 animate-pulse': warna === 'kritis'
-                }">
-                <svg class="w-6 h-6" 
-                    :class="{
-                        'text-purple-700': warna === 'normal',
-                        'text-yellow-700': warna === 'peringatan',
-                        'text-red-700': warna === 'kritis'
-                    }"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div id="timer-container" class="flex items-center gap-3 px-6 py-4 rounded-xl border-2 shadow-lg transition-all bg-purple-50 border-purple-200">
+                <svg class="w-6 h-6 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <div>
-                    <p class="text-xs font-medium"
-                        :class="{
-                            'text-purple-600': warna === 'normal',
-                            'text-yellow-600': warna === 'peringatan',
-                            'text-red-600': warna === 'kritis'
-                        }">Sisa Waktu</p>
-                    <span id="timer-display" class="font-bold text-2xl"
-                        :class="{
-                            'text-purple-700': warna === 'normal',
-                            'text-yellow-700': warna === 'peringatan',
-                            'text-red-700': warna === 'kritis'
-                        }">
+                    <p class="text-xs font-medium text-purple-600">Sisa Waktu</p>
+                    <span id="timer-display" class="font-bold text-2xl text-purple-700">
                         {{ sprintf('%02d:%02d', floor($sisaWaktu / 60), $sisaWaktu % 60) }}
                     </span>
                 </div>
@@ -241,8 +100,8 @@ x-data="{
                 <button 
                     wire:click="lanjutKeEssay"
                     wire:loading.attr="disabled"
-                    wire:loading.class="opacity-50"
-                    class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:ring-4 focus:ring-purple-300 transition flex items-center gap-2">
+                    wire:loading.class="opacity-50 cursor-not-allowed"
+                    class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:ring-4 focus:ring-purple-300 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                     
                     <span wire:loading wire:target="lanjutKeEssay">
                         <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -301,7 +160,7 @@ x-data="{
             </div>
 
             <div class="flex justify-end pt-4 border-t-2 border-gray-200">
-                <button wire:click="next" wire:loading.attr="disabled" wire:loading.class="opacity-50" class="px-8 py-3 bg-gradient-to-r {{ $currentIndex + 1 >= count($soalEssay) ? 'from-green-600 to-green-700' : 'from-purple-600 to-purple-800' }} text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:ring-4 transition flex items-center gap-2">
+                <button wire:click="next" wire:loading.attr="disabled" wire:loading.class="opacity-50 cursor-not-allowed" class="px-8 py-3 bg-gradient-to-r {{ $currentIndex + 1 >= count($soalEssay) ? 'from-green-600 to-green-700' : 'from-purple-600 to-purple-800' }} text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:ring-4 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                     
                     <span wire:loading wire:target="next">
                         <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -312,9 +171,6 @@ x-data="{
                     
                     <span wire:loading.remove wire:target="next">
                         @if ($currentIndex + 1 >= count($soalEssay))
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
                             KUMPULKAN
                         @else
                             LANJUT
@@ -346,6 +202,7 @@ x-data="{
 
 @push('scripts')
 <script>
+    // Prevent accidental page leave
     let formSubmitting = false;
     
     window.addEventListener('beforeunload', function(e) {
@@ -358,6 +215,154 @@ x-data="{
     
     document.addEventListener('livewire:navigating', () => {
         formSubmitting = true;
+    });
+
+    // Timer handler - NO ALPINE.JS CONFLICT
+    document.addEventListener('DOMContentLoaded', function() {
+        let sisaWaktu = {{ max(0, (int) $sisaWaktu) }};
+        let timerActive = {{ $timerActive ? 'true' : 'false' }};
+        let isSubmitting = false;
+        let timerInterval = null;
+        let syncInterval = null;
+        
+        const timerDisplay = document.getElementById('timer-display');
+        const timerContainer = document.getElementById('timer-container');
+        
+        console.log('=== TIMER INIT ===');
+        console.log('Sisa waktu:', sisaWaktu, 'detik');
+        console.log('Timer active:', timerActive);
+        
+        if (sisaWaktu <= 0) {
+            console.error('Waktu habis!');
+            waktuHabis();
+            return;
+        }
+        
+        if (!timerActive) {
+            console.warn('Timer tidak aktif');
+            return;
+        }
+        
+        function updateTimerDisplay() {
+            const menit = Math.floor(sisaWaktu / 60);
+            const detik = sisaWaktu % 60;
+            const tampilan = String(menit).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
+            
+            if (timerDisplay) {
+                timerDisplay.textContent = tampilan;
+            }
+            
+            // Update color based on time
+            if (timerContainer) {
+                timerContainer.classList.remove('bg-purple-50', 'border-purple-200', 'bg-yellow-50', 'border-yellow-300', 'bg-red-50', 'border-red-400', 'animate-pulse');
+                
+                const svg = timerContainer.querySelector('svg');
+                const label = timerContainer.querySelector('p');
+                const display = timerContainer.querySelector('span');
+                
+                if (sisaWaktu <= 60) {
+                    timerContainer.classList.add('bg-red-50', 'border-red-400', 'animate-pulse');
+                    if (svg) svg.classList.remove('text-purple-700', 'text-yellow-700');
+                    if (svg) svg.classList.add('text-red-700');
+                    if (label) label.classList.remove('text-purple-600', 'text-yellow-600');
+                    if (label) label.classList.add('text-red-600');
+                    if (display) display.classList.remove('text-purple-700', 'text-yellow-700');
+                    if (display) display.classList.add('text-red-700');
+                } else if (sisaWaktu <= 300) {
+                    timerContainer.classList.add('bg-yellow-50', 'border-yellow-300');
+                    if (svg) svg.classList.remove('text-purple-700', 'text-red-700');
+                    if (svg) svg.classList.add('text-yellow-700');
+                    if (label) label.classList.remove('text-purple-600', 'text-red-600');
+                    if (label) label.classList.add('text-yellow-600');
+                    if (display) display.classList.remove('text-purple-700', 'text-red-700');
+                    if (display) display.classList.add('text-yellow-700');
+                } else {
+                    timerContainer.classList.add('bg-purple-50', 'border-purple-200');
+                    if (svg) svg.classList.remove('text-yellow-700', 'text-red-700');
+                    if (svg) svg.classList.add('text-purple-700');
+                    if (label) label.classList.remove('text-yellow-600', 'text-red-600');
+                    if (label) label.classList.add('text-purple-600');
+                    if (display) display.classList.remove('text-yellow-700', 'text-red-700');
+                    if (display) display.classList.add('text-purple-700');
+                }
+            }
+        }
+        
+        function startTimer() {
+            updateTimerDisplay();
+            
+            // Main countdown timer
+            timerInterval = setInterval(() => {
+                if (sisaWaktu > 0 && !isSubmitting && timerActive) {
+                    sisaWaktu--;
+                    updateTimerDisplay();
+                    
+                    if (sisaWaktu % 30 === 0) {
+                        console.log('Sisa waktu:', sisaWaktu, 'detik');
+                    }
+                } else if (sisaWaktu <= 0 && !isSubmitting) {
+                    clearInterval(timerInterval);
+                    waktuHabis();
+                }
+            }, 1000);
+            
+            // Sync with server every 30 seconds
+            syncInterval = setInterval(() => {
+                if (!isSubmitting && timerActive) {
+                    syncWithServer();
+                }
+            }, 30000);
+        }
+        
+        async function syncWithServer() {
+            try {
+                console.log('Syncing with server...');
+                const result = await @this.call('syncTimer');
+                
+                if (result && result.status === 'active') {
+                    const diff = Math.abs(sisaWaktu - result.sisaWaktu);
+                    if (diff > 10) {
+                        console.log('Adjusting timer from', sisaWaktu, 'to', result.sisaWaktu);
+                        sisaWaktu = result.sisaWaktu;
+                        updateTimerDisplay();
+                    }
+                } else if (result && result.status === 'expired') {
+                    console.log('Server says time expired');
+                    sisaWaktu = 0;
+                    waktuHabis();
+                }
+            } catch (error) {
+                console.error('Sync error:', error);
+            }
+        }
+        
+        async function waktuHabis() {
+            if (isSubmitting) return;
+            
+            isSubmitting = true;
+            timerActive = false;
+            
+            if (timerInterval) clearInterval(timerInterval);
+            if (syncInterval) clearInterval(syncInterval);
+            
+            console.log('=== WAKTU HABIS ===');
+            
+            try {
+                formSubmitting = true;
+                await @this.call('waktuHabis');
+            } catch (error) {
+                console.error('Error calling waktuHabis:', error);
+                window.location.reload();
+            }
+        }
+        
+        // Start the timer
+        startTimer();
+        
+        // Listen for Livewire events
+        window.addEventListener('switched-to-essay', () => {
+            console.log('Switched to essay, timer continues...');
+        });
     });
 </script>
 @endpush
