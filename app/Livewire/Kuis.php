@@ -24,10 +24,14 @@ class Kuis extends Component
     public $soalPG = [];
     public $soalEssay = [];
     public $currentIndex = 0;
-    public $currentType = 'pg'; // 'pg' atau 'essay'
+    public $currentType = 'pg';
 
-    // Array untuk menyimpan jawaban PG (key = soal_id, value = opsi_id)
     public $jawabanSekarang = [];
+    
+    // Timer properties
+    public $waktuMulai;
+    public $waktuSelesai;
+    public $sisaWaktu; // dalam detik
 
     public function mount(string $kode)
     {
@@ -60,6 +64,20 @@ class Kuis extends Component
             ]);
         }
 
+        // Setup timer
+        $this->waktuMulai = $this->hasilKuis->waktu_mulai;
+        $this->waktuSelesai = $this->hasilKuis->waktu_mulai->copy()->addMinutes($this->kuis->waktu_pengerjaan);
+        
+        // Hitung sisa waktu dalam detik
+        $sekarang = now();
+        $this->sisaWaktu = max(0, $sekarang->diffInSeconds($this->waktuSelesai, false));
+        
+        // Jika waktu habis, langsung selesaikan
+        if ($this->sisaWaktu <= 0) {
+            $this->waktuHabis();
+            return;
+        }
+
         // Ambil soal PG dan Essay
         $this->soalPG = SoalPilihanGanda::with('opsi')
             ->where('kuis_id', $this->kuis->id)
@@ -76,31 +94,28 @@ class Kuis extends Component
         $this->currentType = !empty($this->soalPG) ? 'pg' : 'essay';
         $this->currentIndex = 0;
 
-        // Initialize jawabanSekarang sebagai array untuk PG atau string untuk essay
+        // Initialize jawabanSekarang
         if ($this->currentType === 'pg') {
             $this->jawabanSekarang = [];
         } else {
             $this->jawabanSekarang = '';
         }
 
-        // Load jawaban sebelumnya jika ada (untuk resume)
+        // Load jawaban sebelumnya
         $this->loadExistingAnswer();
     }
 
     protected function loadExistingAnswer()
     {
         if ($this->currentType === 'pg' && !empty($this->soalPG)) {
-            // Load semua jawaban PG yang sudah ada (hanya jika sudah pernah dijawab)
             $jawabanPGExisting = JawabanPilihanGanda::where('hasil_kuis_id', $this->hasilKuis->id)
                 ->get()
                 ->keyBy('soal_id');
 
-            // Hanya load jawaban yang memang sudah pernah disimpan di database
             foreach ($this->soalPG as $soal) {
                 if (isset($jawabanPGExisting[$soal['id']]) && $jawabanPGExisting[$soal['id']]->opsi_id) {
                     $this->jawabanSekarang[$soal['id']] = $jawabanPGExisting[$soal['id']]->opsi_id;
                 }
-                // Jika belum ada jawaban, tidak perlu set apapun (biarkan kosong/null)
             }
         } elseif ($this->currentType === 'essay' && isset($this->soalEssay[$this->currentIndex])) {
             $soal = $this->soalEssay[$this->currentIndex];
@@ -116,48 +131,97 @@ class Kuis extends Component
         }
     }
 
-    // Method untuk tombol "Lanjutkan ke Essay"
     public function lanjutKeEssay()
     {
-        // Simpan semua jawaban PG
+        // Validasi waktu
+        if (!$this->validasiWaktu()) {
+            return;
+        }
+
         $this->simpanJawabanPG();
 
-        // Pindah ke essay jika ada, jika tidak ada langsung selesai
         if (!empty($this->soalEssay)) {
             $this->currentType = 'essay';
             $this->currentIndex = 0;
             $this->jawabanSekarang = '';
             $this->loadExistingAnswer();
         } else {
-            // Jika tidak ada essay, langsung selesai
             $this->selesaikanKuis();
         }
     }
 
     public function next()
     {
-        // Essay
+        // Validasi waktu
+        if (!$this->validasiWaktu()) {
+            return;
+        }
+
         if ($this->currentType === 'essay') {
             $this->simpanJawabanEssay();
 
             $this->currentIndex++;
 
-            // Jika masih ada essay
             if ($this->currentIndex < count($this->soalEssay)) {
                 $this->jawabanSekarang = '';
                 $this->loadExistingAnswer();
             } else {
-                // Semua selesai
                 $this->selesaikanKuis();
             }
         }
+    }
+
+    protected function validasiWaktu(): bool
+    {
+        $sekarang = now();
+        
+        // Refresh hasil kuis dari database
+        $this->hasilKuis->refresh();
+        
+        // Cek apakah sudah selesai
+        if ($this->hasilKuis->status !== 'sedang_mengerjakan') {
+            session()->flash('error', 'Kuis sudah selesai.');
+            $this->redirect(route('kuis.result-kuis', ['hasil' => $this->hasilKuis->id]));
+            return false;
+        }
+        
+        // Hitung sisa waktu
+        $waktuSelesai = $this->hasilKuis->waktu_mulai->copy()->addMinutes($this->kuis->waktu_pengerjaan);
+        
+        if ($sekarang->greaterThanOrEqualTo($waktuSelesai)) {
+            $this->waktuHabis();
+            return false;
+        }
+        
+        return true;
+    }
+
+    public function waktuHabis()
+    {
+        // Simpan jawaban yang ada
+        if ($this->currentType === 'pg') {
+            $this->simpanJawabanPG();
+        } elseif ($this->currentType === 'essay') {
+            $this->simpanJawabanEssay();
+        }
+
+        // Update status
+        $this->hasilKuis->update([
+            'status' => 'waktu_habis',
+            'waktu_selesai' => now(),
+        ]);
+
+        $this->hasilKuis->hitungDurasi();
+        $this->prosesSelesaiKuis();
+
+        session()->flash('warning', 'Waktu kuis telah habis! Jawaban Anda sudah disimpan.');
+        return redirect()->route('kuis.result-kuis', ['hasil' => $this->hasilKuis->id]);
     }
 
     protected function simpanJawabanPG()
     {
         if (empty($this->soalPG)) return;
 
-        // Simpan semua jawaban PG yang sudah dipilih
         foreach ($this->soalPG as $soal) {
             if (isset($this->jawabanSekarang[$soal['id']])) {
                 JawabanPilihanGanda::updateOrCreate(
@@ -196,19 +260,14 @@ class Kuis extends Component
 
     protected function selesaikanKuis()
     {
-        // Update status kuis
         $this->hasilKuis->update([
             'status' => 'selesai',
             'waktu_selesai' => now(),
         ]);
 
-        // Hitung durasi
         $this->hasilKuis->hitungDurasi();
-
-        // Proses penilaian
         $this->prosesSelesaiKuis();
 
-        // Redirect ke halaman terima kasih
         session()->flash('success', 'Kuis berhasil dikumpulkan! Jawaban essay sedang dinilai oleh AI.');
         return redirect()->route('kuis.result-kuis', ['hasil' => $this->hasilKuis->id]);
     }
@@ -216,10 +275,7 @@ class Kuis extends Component
     protected function prosesSelesaiKuis()
     {
         try {
-            // 1. Hitung poin pilihan ganda
             $this->hitungPoinPilihanGanda();
-
-            // 2. Trigger AI untuk nilai essay
             $this->nilaiEssayDenganAI();
         } catch (\Exception $e) {
             Log::error('Error proses selesai kuis', [
@@ -257,13 +313,11 @@ class Kuis extends Component
                 }
             }
 
-            // Update poin PG di hasil kuis
             $this->hasilKuis->update([
                 'poin_pilgan' => $totalPoinPG,
                 'poin_diperoleh' => $totalPoinPG,
             ]);
 
-            // Hitung persentase sementara
             $this->hasilKuis->hitungPersentase();
 
             Log::info('Poin PG dihitung', [
@@ -301,10 +355,8 @@ class Kuis extends Component
 
             foreach ($jawabanEssays as $jawaban) {
                 try {
-                    // Update status menjadi sedang proses
                     $jawaban->update(['status_penilaian' => 'sedang_proses']);
 
-                    // Panggil AI untuk menilai
                     $result = $geminiService->nilaiJawabanEssay($jawaban);
 
                     if ($result['success']) {
@@ -332,7 +384,6 @@ class Kuis extends Component
                 }
             }
 
-            // Refresh hasil kuis untuk ambil poin terbaru
             $this->hasilKuis->refresh();
 
             Log::info('Penilaian AI selesai', [

@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 py-12 px-4">
+<div class="min-h-screen bg-gradient-to-br py-12 px-4">
     <div class="max-w-6xl mx-auto">
         <!-- Header -->
         <div class="bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden mb-6">

@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 py-12 px-4">
+<div class="min-h-screen bg-gradient-to-br py-12 px-4">
     <div class="w-full max-w-md mx-auto">
         <!-- Header dengan Icon -->
         <div class="text-center mb-6">

@@ -7,7 +7,7 @@ use App\Models\HasilKuis;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 
-#[Layout('layouts.app')]
+#[Layout('layouts.sidebar')]
 class ResultKuis extends Component
 {
     public HasilKuis $hasilKuis;

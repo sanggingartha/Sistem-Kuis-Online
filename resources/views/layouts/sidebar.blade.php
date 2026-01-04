@@ -131,8 +131,12 @@
                             Mengerjakan Kuis
                         @elseif (request()->routeIs('kuis.result-kuis'))
                             Hasil Kuis
+                        @elseif (request()->routeIs('kuis.riwayat-kuis'))
+                            Riwayat Kuis
+                        @elseif (request()->routeIs('kuis.lihat-nilai'))
+                            Lihat Nilai
                         @else
-                            WANAQUIZ
+                            Riwayat Kuis
                         @endif
                     </h2>
 

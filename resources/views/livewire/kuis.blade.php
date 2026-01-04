@@ -1,5 +1,5 @@
 <div class="max-w-4xl mx-auto px-4 py-6">
-    <!-- Success Message -->
+    <!-- Success/Warning Message -->
     @if (session()->has('success'))
         <div class="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg shadow-md">
             <div class="flex items-center">
@@ -13,7 +13,33 @@
         </div>
     @endif
 
-    <!-- Header Kuis -->
+    @if (session()->has('warning'))
+        <div class="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg shadow-md">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-yellow-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <span class="text-yellow-800 font-medium">{{ session('warning') }}</span>
+            </div>
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-red-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                <span class="text-red-800 font-medium">{{ session('error') }}</span>
+            </div>
+        </div>
+    @endif
+
+    <!-- Header Kuis dengan Timer -->
     <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex-1">
@@ -39,20 +65,86 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="text-gray-700 font-medium">Waktu: {{ $kuis->waktu_pengerjaan }} menit</span>
+                        <span class="text-gray-700 font-medium">Durasi: {{ $kuis->waktu_pengerjaan }} menit</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Timer Placeholder (opsional) -->
-            <div class="flex items-center gap-2 bg-purple-50 px-4 py-3 rounded-xl border-2 border-purple-200">
-                <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Timer Display -->
+            <div id="timer-container" 
+                class="flex items-center gap-3 px-6 py-4 rounded-xl border-2 shadow-lg transition-all duration-300"
+                x-data="{ 
+                    sisaWaktu: {{ (int) $sisaWaktu }},
+                    warna: 'normal',
+                    interval: null,
+                    
+                    init() {
+                        console.log('Timer initialized dengan sisaWaktu:', this.sisaWaktu, 'detik');
+                        this.updateTimer();
+                        this.interval = setInterval(() => {
+                            if (this.sisaWaktu > 0) {
+                                this.sisaWaktu--;
+                                this.updateTimer();
+                            } else {
+                                clearInterval(this.interval);
+                                this.waktuHabis();
+                            }
+                        }, 1000);
+                    },
+                    
+                    updateTimer() {
+                        const menit = Math.floor(this.sisaWaktu / 60);
+                        const detik = this.sisaWaktu % 60;
+                        
+                        const tampilan = String(menit).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
+                        document.getElementById('timer-display').textContent = tampilan;
+                        
+                        // Update warna berdasarkan sisa waktu
+                        if (this.sisaWaktu <= 60) {
+                            this.warna = 'kritis';
+                        } else if (this.sisaWaktu <= 300) {
+                            this.warna = 'peringatan';
+                        } else {
+                            this.warna = 'normal';
+                        }
+                    },
+                    
+                    waktuHabis() {
+                        console.log('Waktu habis! Memanggil server...');
+                        @this.call('waktuHabis');
+                    }
+                }"
+                :class="{
+                    'bg-purple-50 border-purple-200': warna === 'normal',
+                    'bg-yellow-50 border-yellow-300': warna === 'peringatan',
+                    'bg-red-50 border-red-400 animate-pulse': warna === 'kritis'
+                }">
+                <svg class="w-6 h-6 transition-colors duration-300" 
+                    :class="{
+                        'text-purple-700': warna === 'normal',
+                        'text-yellow-700': warna === 'peringatan',
+                        'text-red-700': warna === 'kritis'
+                    }"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <div>
-                    <p class="text-xs text-purple-600 font-medium">Waktu Pengerjaan</p>
-                    <span class="font-bold text-lg text-purple-700">{{ $kuis->waktu_pengerjaan }}:00</span>
+                    <p class="text-xs font-medium transition-colors duration-300"
+                        :class="{
+                            'text-purple-600': warna === 'normal',
+                            'text-yellow-600': warna === 'peringatan',
+                            'text-red-600': warna === 'kritis'
+                        }">Sisa Waktu</p>
+                    <span id="timer-display" 
+                        class="font-bold text-2xl transition-colors duration-300"
+                        :class="{
+                            'text-purple-700': warna === 'normal',
+                            'text-yellow-700': warna === 'peringatan',
+                            'text-red-700': warna === 'kritis'
+                        }">
+                        {{ sprintf('%02d:%02d', floor($sisaWaktu / 60), $sisaWaktu % 60) }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -213,8 +305,7 @@
         <div class="flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="text-center md:text-left">
                 <p class="text-gray-700 font-semibold mb-1">Tips Mengerjakan Kuis</p>
-                <p class="text-gray-500 text-sm">Baca soal dengan teliti sebelum menjawab dan pastikan koneksi internet
-                    stabil</p>
+                <p class="text-gray-500 text-sm">Perhatikan sisa waktu dan pastikan semua jawaban tersimpan</p>
             </div>
             <div class="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
                 <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,3 +317,21 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    // Prevent page reload warning
+    window.addEventListener('beforeunload', function(e) {
+        const timerContainer = document.getElementById('timer-container');
+        if (timerContainer) {
+            e.preventDefault();
+            e.returnValue = 'Kuis masih berlangsung. Yakin ingin meninggalkan halaman?';
+            return e.returnValue;
+        }
+    });
+    
+    // Debug timer
+    console.log('Sisa waktu dari server:', {{ (int) $sisaWaktu }}, 'detik');
+    console.log('Durasi kuis:', {{ $kuis->waktu_pengerjaan }}, 'menit');
+</script>
+@endpush

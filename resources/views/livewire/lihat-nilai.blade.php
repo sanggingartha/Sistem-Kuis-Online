@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 py-12 px-4">
+<div class="min-h-screen bg-gradient-to-br py-12 px-4">
     <div class="max-w-6xl mx-auto">
 
         <!-- HEADER -->
@@ -86,10 +86,10 @@
                 Kembali
             </a>
 
-            <button onclick="window.print()"
+            {{-- <button onclick="window.print()"
                 class="px-8 py-3 bg-blue-700 text-white font-bold rounded-xl shadow hover:scale-105 transition">
                 Cetak
-            </button>
+            </button> --}}
         </div>
 
     </div>
