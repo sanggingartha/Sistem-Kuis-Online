@@ -51,7 +51,10 @@ Route::middleware(['auth', RoleAccess::class])->group(function () {
     //  Halaman result kuis
     Route::get('/kuis/result-kuis/{hasil}', \App\Livewire\ResultKuis::class)->name('kuis.result-kuis');
     
-    // Halaman lihat nilai (BARU)
+    // Halaman waktu habis
+    Route::get('/kuis/waktu-habis/{hasil}', \App\Livewire\WaktuHabis::class)->name('kuis.waktu-habis');
+
+    // Halaman lihat nilai
     Route::get('/kuis/lihat-nilai/{hasil}', LihatNilai::class)->name('kuis.lihat-nilai');
 
     // Halaman Riwayat Kuis

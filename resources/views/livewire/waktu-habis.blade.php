@@ -2,7 +2,9 @@
     sisaWaktu: {{ (int) $sisaWaktu }},
     warna: 'normal',
     interval: null,
+    syncInterval: null,
     isSubmitting: false,
+    lastSync: Date.now(),
     
     init() {
         console.log('=== TIMER DEBUG INFO ===');
@@ -22,21 +24,42 @@
         }
         
         this.updateTimer();
+        
+        // Timer countdown di frontend (update setiap detik)
         this.interval = setInterval(() => {
             if (this.sisaWaktu > 0 && !this.isSubmitting) {
                 this.sisaWaktu--;
                 this.updateTimer();
                 
-                // Log setiap 30 detik
+                // Log setiap 30 detik untuk debugging
                 if (this.sisaWaktu % 30 === 0) {
-                    console.log('Timer update - Sisa waktu:', this.sisaWaktu, 'detik');
+                    console.log('Timer update - Sisa waktu:', this.sisaWaktu, 'detik (' + (this.sisaWaktu/60).toFixed(1) + ' menit)');
                 }
             } else if (this.sisaWaktu <= 0 && !this.isSubmitting) {
                 clearInterval(this.interval);
-                console.log('Waktu habis! Calling waktuHabis()...');
+                console.log('⏰ Waktu habis! Calling waktuHabis()...');
                 this.waktuHabis();
             }
         }, 1000);
+        
+        // Sync dengan server setiap 30 detik untuk validasi
+        this.syncInterval = setInterval(() => {
+            if (!this.isSubmitting) {
+                this.syncWithServer();
+            }
+        }, 30000); // Sync setiap 30 detik
+        
+        // Sync jika user kembali ke tab (detect visibility change)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !this.isSubmitting) {
+                const timeSinceLastSync = Date.now() - this.lastSync;
+                // Jika lebih dari 10 detik, lakukan sync
+                if (timeSinceLastSync > 10000) {
+                    console.log('Tab active kembali, melakukan sync...');
+                    this.syncWithServer();
+                }
+            }
+        });
     },
     
     updateTimer() {
@@ -50,26 +73,73 @@
         }
         
         // Update warna berdasarkan sisa waktu
-        if (this.sisaWaktu <= 60) {
+        if (this.sisaWaktu <= 60) { // 1 menit terakhir
             this.warna = 'kritis';
-        } else if (this.sisaWaktu <= 300) {
+        } else if (this.sisaWaktu <= 300) { // 5 menit terakhir
             this.warna = 'peringatan';
         } else {
             this.warna = 'normal';
         }
     },
     
+    async syncWithServer() {
+        try {
+            console.log('🔄 Syncing timer dengan server...');
+            const result = await @this.call('syncTimer');
+            this.lastSync = Date.now();
+            
+            if (result.status === 'expired') {
+                console.log('⏰ Server mendeteksi waktu habis!');
+                clearInterval(this.interval);
+                clearInterval(this.syncInterval);
+                this.waktuHabis();
+            } else if (result.status === 'active') {
+                // Update sisaWaktu dari server jika berbeda signifikan
+                const diff = Math.abs(this.sisaWaktu - result.sisaWaktu);
+                if (diff > 5) { // Jika selisih lebih dari 5 detik
+                    console.log('⚠️ Perbedaan waktu terdeteksi:', diff, 'detik. Syncing...');
+                    console.log('Frontend:', this.sisaWaktu, '-> Server:', result.sisaWaktu);
+                    this.sisaWaktu = result.sisaWaktu;
+                    this.updateTimer();
+                } else {
+                    console.log('✅ Timer sync OK - selisih', diff, 'detik');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error syncing timer:', error);
+        }
+    },
+    
     async waktuHabis() {
-        if (this.isSubmitting) return;
+        if (this.isSubmitting) {
+            console.log('⚠️ Sudah dalam proses submit, skip waktuHabis');
+            return;
+        }
         
         this.isSubmitting = true;
-        console.log('Waktu habis! Memanggil server...');
+        clearInterval(this.interval);
+        clearInterval(this.syncInterval);
+        
+        console.log('⏰ Waktu habis! Memanggil server...');
+        
+        // Tampilkan loading indicator
+        const timerContainer = document.getElementById('timer-container');
+        if (timerContainer) {
+            timerContainer.innerHTML = '<div class=\"flex items-center gap-2\"><div class=\"animate-spin rounded-full h-5 w-5 border-b-2 border-red-600\"></div><span class=\"text-red-600 font-bold\">Memproses...</span></div>';
+        }
         
         try {
             await @this.call('waktuHabis');
         } catch (error) {
-            console.error('Error saat waktu habis:', error);
+            console.error('❌ Error saat waktu habis:', error);
+            this.isSubmitting = false;
         }
+    },
+    
+    // Cleanup saat component di-destroy
+    destroy() {
+        if (this.interval) clearInterval(this.interval);
+        if (this.syncInterval) clearInterval(this.syncInterval);
     }
 }">
     <!-- Success/Warning Message -->
