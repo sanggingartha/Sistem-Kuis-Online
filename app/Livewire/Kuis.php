@@ -14,6 +14,7 @@ use App\Services\GeminiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
+use Carbon\Carbon;
 
 #[Layout('layouts.sidebar')]
 class Kuis extends Component
@@ -23,15 +24,14 @@ class Kuis extends Component
 
     public $soalPG = [];
     public $soalEssay = [];
-    public $currentIndex = 0;
     public $currentType = 'pg';
 
-    public $jawabanSekarang = [];
-    
-    // Timer properties
-    public $waktuMulai;
-    public $waktuSelesai;
-    public $sisaWaktu; // dalam detik
+    public $jawabanPG = [];
+    public $jawabanEssay = [];
+
+    // Timer properties - HARUS PUBLIC untuk bisa diakses di view
+    public $waktuSelesai = 0; // Simpan sebagai timestamp
+    public $sisaWaktu = 0;
     public $timerActive = true;
 
     public function mount(string $kode)
@@ -42,12 +42,12 @@ class Kuis extends Component
         if ($this->kuis->status !== 'aktif') {
             abort(403, 'Kuis belum aktif');
         }
-        
+
         $now = now();
         if ($this->kuis->mulai_dari && $now->lt($this->kuis->mulai_dari)) {
             abort(403, 'Kuis belum dimulai');
         }
-        
+
         if ($this->kuis->berakhir_pada && $now->gt($this->kuis->berakhir_pada)) {
             abort(403, 'Kuis sudah berakhir');
         }
@@ -62,51 +62,129 @@ class Kuis extends Component
 
         if ($lastHasil && $lastHasil->status === 'sedang_mengerjakan') {
             $this->hasilKuis = $lastHasil;
-            
+
             Log::info('Melanjutkan kuis yang ada', [
                 'hasil_kuis_id' => $lastHasil->id,
                 'waktu_mulai' => $lastHasil->waktu_mulai,
+                'waktu_mulai_raw' => $lastHasil->getRawOriginal('waktu_mulai'),
                 'percobaan_ke' => $lastHasil->percobaan_ke
             ]);
         } else {
             $percobaanKe = $lastHasil ? $lastHasil->percobaan_ke + 1 : 1;
-            
+
+            // PENTING: Set waktu_mulai secara eksplisit
+            $waktuMulaiNow = now();
+
             $this->hasilKuis = HasilKuis::create([
                 'kuis_id' => $this->kuis->id,
                 'user_id' => $userId,
                 'percobaan_ke' => $percobaanKe,
                 'total_poin' => $this->kuis->total_poin,
-                'waktu_mulai' => now(),
+                'waktu_mulai' => $waktuMulaiNow, // Set eksplisit
                 'status' => 'sedang_mengerjakan',
             ]);
-            
+
+            // Refresh untuk memastikan data dari database
+            $this->hasilKuis->refresh();
+
             Log::info('Membuat hasil kuis baru', [
                 'hasil_kuis_id' => $this->hasilKuis->id,
-                'waktu_mulai' => $this->hasilKuis->waktu_mulai,
-                'percobaan_ke' => $percobaanKe,
-                'status' => $this->hasilKuis->status
+                'waktu_mulai_set' => $waktuMulaiNow->format('Y-m-d H:i:s'),
+                'waktu_mulai_db' => $this->hasilKuis->waktu_mulai,
+                'waktu_mulai_raw' => $this->hasilKuis->getRawOriginal('waktu_mulai'),
+                'percobaan_ke' => $percobaanKe
             ]);
         }
 
-        // Setup timer
-        $this->initializeTimer();
-
-        Log::info('Timer details after init', [
-            'waktu_mulai' => $this->waktuMulai->format('Y-m-d H:i:s'),
-            'waktu_selesai' => $this->waktuSelesai->format('Y-m-d H:i:s'),
-            'sekarang' => now()->format('Y-m-d H:i:s'),
-            'sisa_waktu' => $this->sisaWaktu,
-            'status' => $this->hasilKuis->status
-        ]);
+        // Setup timer - Hitung waktu selesai sebagai timestamp
+        $this->setupTimer();
 
         // Cek apakah waktu sudah habis
-        if ($this->sisaWaktu <= 0) {
+        if ($this->sisaWaktu <= 0 && $this->timerActive) {
             Log::warning('Waktu sudah habis saat mount');
             $this->waktuHabis();
             return;
         }
 
         // Ambil soal PG dan Essay
+        $this->loadSoal();
+
+        // Load jawaban sebelumnya
+        $this->loadExistingAnswer();
+    }
+
+    protected function setupTimer(): void
+    {
+        try {
+            // Refresh dari database untuk data terbaru
+            $this->hasilKuis->refresh();
+
+            // Validasi waktu_mulai
+            if (!$this->hasilKuis->waktu_mulai) {
+                Log::error('waktu_mulai is NULL, setting now');
+                $this->hasilKuis->waktu_mulai = now();
+                $this->hasilKuis->save();
+                $this->hasilKuis->refresh();
+            }
+
+            // Parse waktu mulai - PENTING: pastikan jadi Carbon instance
+            $waktuMulai = $this->hasilKuis->waktu_mulai instanceof \Carbon\Carbon
+                ? $this->hasilKuis->waktu_mulai
+                : Carbon::parse($this->hasilKuis->waktu_mulai);
+
+            // Hitung waktu selesai
+            $waktuSelesaiCarbon = $waktuMulai->copy()->addMinutes($this->kuis->waktu_pengerjaan);
+
+            // PENTING: Cast ke integer timestamp
+            $this->waktuSelesai = (int) $waktuSelesaiCarbon->timestamp;
+
+            // Hitung sisa waktu
+            $sekarang = now();
+            $sekarangTimestamp = (int) $sekarang->timestamp;
+
+            if ($sekarangTimestamp >= $this->waktuSelesai) {
+                $this->sisaWaktu = 0;
+                $this->timerActive = false;
+            } else {
+                $this->sisaWaktu = (int) ($this->waktuSelesai - $sekarangTimestamp);
+            }
+
+            Log::info('✅ Timer setup SUCCESS', [
+                'hasil_kuis_id' => $this->hasilKuis->id,
+                'waktu_mulai' => $waktuMulai->format('Y-m-d H:i:s'),
+                'waktu_mulai_timestamp' => $waktuMulai->timestamp,
+                'waktu_selesai' => $waktuSelesaiCarbon->format('Y-m-d H:i:s'),
+                'waktu_selesai_timestamp' => $this->waktuSelesai,
+                'waktu_selesai_type' => gettype($this->waktuSelesai),
+                'sekarang' => $sekarang->format('Y-m-d H:i:s'),
+                'sekarang_timestamp' => $sekarangTimestamp,
+                'durasi_kuis_menit' => $this->kuis->waktu_pengerjaan,
+                'sisa_waktu_detik' => $this->sisaWaktu,
+                'timer_active' => $this->timerActive,
+                'selisih_check' => ($this->waktuSelesai - $sekarangTimestamp)
+            ]);
+
+            // VALIDASI FINAL
+            if (!is_int($this->waktuSelesai) || $this->waktuSelesai <= 0) {
+                throw new \Exception("Invalid waktuSelesai: " . var_export($this->waktuSelesai, true));
+            }
+
+            if ($this->waktuSelesai < $sekarangTimestamp) {
+                Log::warning('⚠️ waktuSelesai sudah lewat!');
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ Error setupTimer', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->sisaWaktu = 0;
+            $this->timerActive = false;
+            $this->waktuSelesai = 0;
+        }
+    }
+
+    protected function loadSoal(): void
+    {
         $this->soalPG = SoalPilihanGanda::with('opsi')
             ->where('kuis_id', $this->kuis->id)
             ->orderBy('urutan')
@@ -118,188 +196,67 @@ class Kuis extends Component
             ->get()
             ->toArray();
 
-        // Tentukan tipe soal pertama
         $this->currentType = !empty($this->soalPG) ? 'pg' : 'essay';
-        $this->currentIndex = 0;
 
-        // Initialize jawabanSekarang
-        if ($this->currentType === 'pg') {
-            $this->jawabanSekarang = [];
-        } else {
-            $this->jawabanSekarang = '';
-        }
-
-        // Load jawaban sebelumnya
-        $this->loadExistingAnswer();
+        $this->jawabanPG = [];
+        $this->jawabanEssay = [];
     }
 
-    protected function initializeTimer(): void
-    {
-        if (!$this->hasilKuis->waktu_mulai) {
-            Log::error('waktu_mulai is NULL!');
-            $this->hasilKuis->waktu_mulai = now();
-            $this->hasilKuis->save();
-        }
-
-        $this->waktuMulai = $this->hasilKuis->waktu_mulai;
-        $this->waktuSelesai = $this->waktuMulai->copy()->addMinutes($this->kuis->waktu_pengerjaan);
-        
-        $sekarang = now();
-        
-        if ($this->waktuSelesai->gt($sekarang)) {
-            $this->sisaWaktu = (int) $sekarang->diffInSeconds($this->waktuSelesai, false);
-            
-            if ($this->sisaWaktu < 0) {
-                Log::warning('Sisa waktu negatif, set ke 0');
-                $this->sisaWaktu = 0;
-            }
-        } else {
-            $this->sisaWaktu = 0;
-        }
-        
-        Log::info('Timer initialized', [
-            'waktu_mulai' => $this->waktuMulai->format('Y-m-d H:i:s'),
-            'waktu_selesai' => $this->waktuSelesai->format('Y-m-d H:i:s'),
-            'sekarang' => $sekarang->format('Y-m-d H:i:s'),
-            'sisa_waktu_detik' => $this->sisaWaktu,
-            'sisa_waktu_menit' => round($this->sisaWaktu / 60, 2),
-        ]);
-    }
-
-    public function syncTimer()
+    // Method untuk sync timer dari JavaScript
+    public function getTimerData()
     {
         try {
-            $this->hasilKuis->refresh();
-            
-            if ($this->hasilKuis->status !== 'sedang_mengerjakan') {
-                return [
-                    'status' => 'completed',
-                    'sisaWaktu' => 0
-                ];
-            }
-            
-            $waktuSelesai = $this->hasilKuis->waktu_mulai->copy()->addMinutes($this->kuis->waktu_pengerjaan);
-            $sekarang = now();
-            
-            if ($waktuSelesai->gt($sekarang)) {
-                $sisaWaktu = (int) $sekarang->diffInSeconds($waktuSelesai, false);
-                $sisaWaktu = max(0, $sisaWaktu);
-                
-                return [
-                    'status' => 'active',
-                    'sisaWaktu' => $sisaWaktu
-                ];
-            } else {
+            $now = now()->timestamp;
+            $sisaWaktu = max(0, $this->waktuSelesai - $now);
+
+            // Cek apakah waktu sudah habis
+            if ($sisaWaktu <= 0 && $this->timerActive) {
+                $this->timerActive = false;
+                Log::info('Timer expired during sync');
                 return [
                     'status' => 'expired',
-                    'sisaWaktu' => 0
+                    'sisaWaktu' => 0,
+                    'waktuSelesai' => $this->waktuSelesai
                 ];
             }
+
+            return [
+                'status' => 'active',
+                'sisaWaktu' => $sisaWaktu,
+                'waktuSelesai' => $this->waktuSelesai,
+                'serverTime' => $now
+            ];
         } catch (\Exception $e) {
-            Log::error('Error in syncTimer', [
-                'error' => $e->getMessage()
-            ]);
-            
+            Log::error('Error getTimerData', ['error' => $e->getMessage()]);
             return [
                 'status' => 'error',
-                'sisaWaktu' => 0
+                'sisaWaktu' => 0,
+                'waktuSelesai' => $this->waktuSelesai ?? now()->timestamp
             ];
         }
     }
 
     protected function loadExistingAnswer()
     {
-        if ($this->currentType === 'pg' && !empty($this->soalPG)) {
+        // Load jawaban PG
+        if (!empty($this->soalPG)) {
             $jawabanPGExisting = JawabanPilihanGanda::where('hasil_kuis_id', $this->hasilKuis->id)
                 ->get()
                 ->keyBy('soal_id');
 
             foreach ($this->soalPG as $soal) {
-                if (isset($jawabanPGExisting[$soal['id']]) && $jawabanPGExisting[$soal['id']]->opsi_id) {
-                    $this->jawabanSekarang[$soal['id']] = $jawabanPGExisting[$soal['id']]->opsi_id;
-                }
-            }
-        } elseif ($this->currentType === 'essay' && isset($this->soalEssay[$this->currentIndex])) {
-            $soal = $this->soalEssay[$this->currentIndex];
-            $jawaban = JawabanEssay::where('hasil_kuis_id', $this->hasilKuis->id)
-                ->where('soal_id', $soal['id'])
-                ->first();
-
-            if ($jawaban) {
-                $this->jawabanSekarang = $jawaban->jawaban_siswa;
-            } else {
-                $this->jawabanSekarang = '';
+                $this->jawabanPG[$soal['id']] = $jawabanPGExisting[$soal['id']]->opsi_id ?? null;
             }
         }
-    }
 
-    public function checkTimer()
-    {
-        return $this->validasiWaktu();
-    }
+        // Load jawaban Essay
+        if (!empty($this->soalEssay)) {
+            $jawabanEssayExisting = JawabanEssay::where('hasil_kuis_id', $this->hasilKuis->id)
+                ->get()
+                ->keyBy('soal_id');
 
-    public function lanjutKeEssay()
-    {
-        try {
-            Log::info('=== LANJUT KE ESSAY CALLED ===', [
-                'currentType' => $this->currentType,
-                'soalEssay_count' => count($this->soalEssay),
-            ]);
-            
-            // Validasi waktu
-            if (!$this->checkTimer()) {
-                Log::warning('Timer validation failed');
-                session()->flash('error', 'Waktu sudah habis.');
-                return;
-            }
-
-            // Simpan jawaban PG
-            $this->simpanJawabanPG();
-            
-            Log::info('Jawaban PG disimpan');
-
-            if (!empty($this->soalEssay)) {
-                $this->currentType = 'essay';
-                $this->currentIndex = 0;
-                $this->jawabanSekarang = '';
-                $this->loadExistingAnswer();
-                
-                Log::info('=== SUCCESSFULLY SWITCHED TO ESSAY ===');
-                
-                session()->flash('success', 'Berhasil beralih ke soal essay.');
-                
-                // Dispatch event untuk memberitahu frontend
-                $this->dispatch('switched-to-essay');
-            } else {
-                Log::info('No essay, finishing quiz');
-                $this->selesaikanKuis();
-            }
-        } catch (\Exception $e) {
-            Log::error('Error in lanjutKeEssay', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
-        }
-    }
-
-    public function next()
-    {
-        if (!$this->checkTimer()) {
-            return;
-        }
-
-        if ($this->currentType === 'essay') {
-            $this->simpanJawabanEssay();
-
-            $this->currentIndex++;
-
-            if ($this->currentIndex < count($this->soalEssay)) {
-                $this->jawabanSekarang = '';
-                $this->loadExistingAnswer();
-            } else {
-                $this->selesaikanKuis();
+            foreach ($this->soalEssay as $soal) {
+                $this->jawabanEssay[$soal['id']] = $jawabanEssayExisting[$soal['id']]->jawaban_siswa ?? '';
             }
         }
     }
@@ -307,56 +264,68 @@ class Kuis extends Component
     protected function validasiWaktu(): bool
     {
         try {
-            $sekarang = now();
-            
-            $this->hasilKuis->refresh();
-            
-            if ($this->hasilKuis->status !== 'sedang_mengerjakan') {
-                Log::warning('Status bukan sedang_mengerjakan');
-                return false;
-            }
-            
-            $waktuSelesai = $this->hasilKuis->waktu_mulai->copy()->addMinutes($this->kuis->waktu_pengerjaan);
-            
-            if ($sekarang->gte($waktuSelesai)) {
-                Log::info('Waktu habis terdeteksi');
+            $now = now()->timestamp;
+            $sisaWaktu = max(0, $this->waktuSelesai - $now);
+
+            if ($sisaWaktu <= 0 && $this->timerActive) {
+                Log::info('Waktu habis terdeteksi di validasi');
                 $this->waktuHabis();
                 return false;
             }
-            
-            // Update sisa waktu
-            $this->sisaWaktu = (int) $sekarang->diffInSeconds($waktuSelesai, false);
-            $this->sisaWaktu = max(0, $this->sisaWaktu);
-            
+
             return true;
         } catch (\Exception $e) {
-            Log::error('Error validasi waktu', [
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Error validasi waktu', ['error' => $e->getMessage()]);
             return false;
+        }
+    }
+
+    public function lanjutKeEssay()
+    {
+        try {
+            Log::info('=== LANJUT KE ESSAY ===');
+
+            if (!$this->validasiWaktu()) {
+                session()->flash('error', 'Waktu sudah habis.');
+                return;
+            }
+
+            $this->simpanJawabanPG();
+
+            if (!empty($this->soalEssay)) {
+                $this->currentType = 'essay';
+                $this->loadExistingAnswer();
+
+                Log::info('Berhasil beralih ke essay');
+                session()->flash('success', 'Berhasil beralih ke soal essay.');
+            } else {
+                $this->selesaikanKuis();
+            }
+        } catch (\Exception $e) {
+            Log::error('Error lanjutKeEssay', ['error' => $e->getMessage()]);
+            session()->flash('error', 'Terjadi kesalahan.');
         }
     }
 
     public function waktuHabis()
     {
         try {
-            Log::info('=== WAKTU HABIS DIPANGGIL ===');
-            
+            Log::info('=== WAKTU HABIS ===');
+
             $this->hasilKuis->refresh();
-            
+
             if ($this->hasilKuis->status !== 'sedang_mengerjakan') {
-                Log::info('Status sudah berubah, redirect');
-                return redirect()->route('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]);
+                $this->redirectRoute('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]);
+                return;
             }
 
             // Simpan jawaban
             if ($this->currentType === 'pg') {
                 $this->simpanJawabanPG();
-            } elseif ($this->currentType === 'essay') {
-                $this->simpanJawabanEssay();
+            } else {
+                $this->simpanSemuaJawabanEssay();
             }
 
-            // Update status
             $this->hasilKuis->update([
                 'status' => 'waktu_habis',
                 'waktu_selesai' => now(),
@@ -367,16 +336,12 @@ class Kuis extends Component
 
             $this->timerActive = false;
 
-            Log::info('Waktu habis berhasil diproses');
-
-            return redirect()->route('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]);
+            // Redirect Livewire
+            $this->redirectRoute('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]);
         } catch (\Exception $e) {
-            Log::error('Error waktu habis', [
-                'error' => $e->getMessage()
-            ]);
-            
+            Log::error('Error waktuHabis', ['error' => $e->getMessage()]);
             session()->flash('error', 'Terjadi kesalahan.');
-            return redirect()->route('kode.kuis');
+            $this->redirectRoute('kode.kuis');
         }
     }
 
@@ -384,20 +349,15 @@ class Kuis extends Component
     {
         if (empty($this->soalPG)) return;
 
-        Log::info('Simpan jawaban PG', [
-            'jumlah_soal' => count($this->soalPG),
-            'jumlah_jawaban' => count($this->jawabanSekarang)
-        ]);
-
         foreach ($this->soalPG as $soal) {
-            if (isset($this->jawabanSekarang[$soal['id']])) {
+            if (isset($this->jawabanPG[$soal['id']]) && $this->jawabanPG[$soal['id']] !== null) {
                 JawabanPilihanGanda::updateOrCreate(
                     [
                         'hasil_kuis_id' => $this->hasilKuis->id,
                         'soal_id' => $soal['id'],
                     ],
                     [
-                        'opsi_id' => $this->jawabanSekarang[$soal['id']],
+                        'opsi_id' => $this->jawabanPG[$soal['id']],
                         'dijawab_pada' => now(),
                     ]
                 );
@@ -405,28 +365,41 @@ class Kuis extends Component
         }
     }
 
-    protected function simpanJawabanEssay()
+    protected function simpanSemuaJawabanEssay()
     {
-        if (!isset($this->soalEssay[$this->currentIndex])) return;
+        if (empty($this->soalEssay)) return;
 
-        $soal = $this->soalEssay[$this->currentIndex];
-
-        JawabanEssay::updateOrCreate(
-            [
-                'hasil_kuis_id' => $this->hasilKuis->id,
-                'soal_id' => $soal['id'],
-            ],
-            [
-                'jawaban_siswa' => $this->jawabanSekarang,
-                'poin_maksimal' => $soal['poin_maksimal'] ?? 20,
-                'status_penilaian' => 'belum_dinilai',
-                'dijawab_pada' => now(),
-            ]
-        );
+        foreach ($this->soalEssay as $soal) {
+            if (isset($this->jawabanEssay[$soal['id']]) && !empty(trim($this->jawabanEssay[$soal['id']]))) {
+                JawabanEssay::updateOrCreate(
+                    [
+                        'hasil_kuis_id' => $this->hasilKuis->id,
+                        'soal_id' => $soal['id'],
+                    ],
+                    [
+                        'jawaban_siswa' => $this->jawabanEssay[$soal['id']],
+                        'poin_maksimal' => $soal['poin_maksimal'] ?? 20,
+                        'status_penilaian' => 'belum_dinilai',
+                        'dijawab_pada' => now(),
+                    ]
+                );
+            }
+        }
     }
 
-    protected function selesaikanKuis()
+    public function selesaikanKuis()
     {
+        if (!$this->validasiWaktu()) {
+            session()->flash('error', 'Waktu sudah habis.');
+            return;
+        }
+
+        if ($this->currentType === 'pg') {
+            $this->simpanJawabanPG();
+        }
+
+        $this->simpanSemuaJawabanEssay();
+
         $this->hasilKuis->update([
             'status' => 'selesai',
             'waktu_selesai' => now(),
@@ -447,9 +420,7 @@ class Kuis extends Component
             $this->hitungPoinPilihanGanda();
             $this->nilaiEssayDenganAI();
         } catch (\Exception $e) {
-            Log::error('Error proses selesai kuis', [
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Error proses selesai kuis', ['error' => $e->getMessage()]);
         }
     }
 
@@ -485,9 +456,7 @@ class Kuis extends Component
 
             $this->hasilKuis->hitungPersentase();
         } catch (\Exception $e) {
-            Log::error('Error hitung poin PG', [
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Error hitung poin PG', ['error' => $e->getMessage()]);
         }
     }
 
@@ -519,21 +488,40 @@ class Kuis extends Component
 
             $this->hasilKuis->refresh();
         } catch (\Exception $e) {
-            Log::error('Error AI Grading', [
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Error AI Grading', ['error' => $e->getMessage()]);
         }
     }
 
     public function render()
     {
-        $soalSekarang = null;
-        if ($this->currentType === 'essay' && isset($this->soalEssay[$this->currentIndex])) {
-            $soalSekarang = $this->soalEssay[$this->currentIndex];
-        }
+        // Hitung sisa waktu real-time sebelum render
+        $now = now()->timestamp;
+        $this->sisaWaktu = max(0, $this->waktuSelesai - $now);
+
+        Log::info('Render view', [
+            'waktuSelesai' => $this->waktuSelesai,
+            'sisaWaktu' => $this->sisaWaktu,
+            'timerActive' => $this->timerActive,
+            'now' => $now
+        ]);
 
         return view('livewire.kuis', [
-            'soalSekarang' => $soalSekarang
+            'waktuSelesai' => $this->waktuSelesai,
+            'sisaWaktu' => $this->sisaWaktu,
+            'timerActive' => $this->timerActive,
         ]);
+    }
+
+    // Method untuk debugging dari browser console
+    public function debugTimer()
+    {
+        return [
+            'waktuSelesai' => $this->waktuSelesai,
+            'waktuSelesaiDate' => date('Y-m-d H:i:s', $this->waktuSelesai),
+            'sisaWaktu' => $this->sisaWaktu,
+            'timerActive' => $this->timerActive,
+            'now' => now()->format('Y-m-d H:i:s'),
+            'nowTimestamp' => now()->timestamp,
+        ];
     }
 }

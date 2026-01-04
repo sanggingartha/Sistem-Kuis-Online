@@ -15,7 +15,7 @@
                 $table->id();
                 $table->foreignId('kuis_id')->constrained('kuis')->onDelete('cascade');
                 $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-                $table->timestamp('waktu_mulai')->useCurrent();
+                $table->timestamp('waktu_mulai')->nullable();
                 $table->timestamp('waktu_selesai')->nullable();
                 $table->integer('durasi_pengerjaan')->nullable();
                 $table->integer('total_poin')->default(0);
