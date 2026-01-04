@@ -16,6 +16,7 @@ class WaktuHabis extends Component
     public $waktuSelesai;
     public $durasiPengerjaan;
     public $statusPenilaian;
+    public $sisaWaktu = 0;
 
     public function mount(HasilKuis $hasil)
     {
@@ -34,6 +35,9 @@ class WaktuHabis extends Component
         $this->waktuMulai = $hasil->waktu_mulai;
         $this->waktuSelesai = $hasil->waktu_selesai;
         $this->durasiPengerjaan = $hasil->durasi_pengerjaan;
+        
+        // Set sisa waktu = 0 karena sudah habis
+        $this->sisaWaktu = 0;
 
         // Cek status penilaian essay
         $this->checkStatusPenilaian();

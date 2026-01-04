@@ -1,145 +1,14 @@
 <div class="max-w-4xl mx-auto px-4 py-6" x-data="{
-    sisaWaktu: {{ (int) $sisaWaktu }},
-    warna: 'normal',
-    interval: null,
-    syncInterval: null,
-    isSubmitting: false,
-    lastSync: Date.now(),
+    statusPenilaian: '{{ $statusPenilaian }}',
     
     init() {
-        console.log('=== TIMER DEBUG INFO ===');
-        console.log('sisaWaktu dari server:', {{ (int) $sisaWaktu }}, 'detik');
-        console.log('sisaWaktu dalam menit:', ({{ (int) $sisaWaktu }} / 60).toFixed(2), 'menit');
+        console.log('=== WAKTU HABIS PAGE ===');
+        console.log('Status kuis:', '{{ $hasil->status }}');
         console.log('Waktu mulai:', '{{ $waktuMulai }}');
         console.log('Waktu selesai:', '{{ $waktuSelesai }}');
-        console.log('Durasi kuis:', {{ $kuis->waktu_pengerjaan }}, 'menit');
+        console.log('Durasi pengerjaan:', '{{ $durasiPengerjaan }}', 'detik');
+        console.log('Status penilaian:', this.statusPenilaian);
         console.log('=======================');
-        
-        // Cek jika waktu sudah 0 dari awal
-        if (this.sisaWaktu <= 0) {
-            console.error('ERROR: Waktu sudah habis saat load!');
-            console.log('Memanggil waktuHabis()...');
-            this.waktuHabis();
-            return;
-        }
-        
-        this.updateTimer();
-        
-        // Timer countdown di frontend (update setiap detik)
-        this.interval = setInterval(() => {
-            if (this.sisaWaktu > 0 && !this.isSubmitting) {
-                this.sisaWaktu--;
-                this.updateTimer();
-                
-                // Log setiap 30 detik untuk debugging
-                if (this.sisaWaktu % 30 === 0) {
-                    console.log('Timer update - Sisa waktu:', this.sisaWaktu, 'detik (' + (this.sisaWaktu/60).toFixed(1) + ' menit)');
-                }
-            } else if (this.sisaWaktu <= 0 && !this.isSubmitting) {
-                clearInterval(this.interval);
-                console.log('⏰ Waktu habis! Calling waktuHabis()...');
-                this.waktuHabis();
-            }
-        }, 1000);
-        
-        // Sync dengan server setiap 30 detik untuk validasi
-        this.syncInterval = setInterval(() => {
-            if (!this.isSubmitting) {
-                this.syncWithServer();
-            }
-        }, 30000); // Sync setiap 30 detik
-        
-        // Sync jika user kembali ke tab (detect visibility change)
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && !this.isSubmitting) {
-                const timeSinceLastSync = Date.now() - this.lastSync;
-                // Jika lebih dari 10 detik, lakukan sync
-                if (timeSinceLastSync > 10000) {
-                    console.log('Tab active kembali, melakukan sync...');
-                    this.syncWithServer();
-                }
-            }
-        });
-    },
-    
-    updateTimer() {
-        const menit = Math.floor(this.sisaWaktu / 60);
-        const detik = this.sisaWaktu % 60;
-        
-        const tampilan = String(menit).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
-        const displayEl = document.getElementById('timer-display');
-        if (displayEl) {
-            displayEl.textContent = tampilan;
-        }
-        
-        // Update warna berdasarkan sisa waktu
-        if (this.sisaWaktu <= 60) { // 1 menit terakhir
-            this.warna = 'kritis';
-        } else if (this.sisaWaktu <= 300) { // 5 menit terakhir
-            this.warna = 'peringatan';
-        } else {
-            this.warna = 'normal';
-        }
-    },
-    
-    async syncWithServer() {
-        try {
-            console.log('🔄 Syncing timer dengan server...');
-            const result = await @this.call('syncTimer');
-            this.lastSync = Date.now();
-            
-            if (result.status === 'expired') {
-                console.log('⏰ Server mendeteksi waktu habis!');
-                clearInterval(this.interval);
-                clearInterval(this.syncInterval);
-                this.waktuHabis();
-            } else if (result.status === 'active') {
-                // Update sisaWaktu dari server jika berbeda signifikan
-                const diff = Math.abs(this.sisaWaktu - result.sisaWaktu);
-                if (diff > 5) { // Jika selisih lebih dari 5 detik
-                    console.log('⚠️ Perbedaan waktu terdeteksi:', diff, 'detik. Syncing...');
-                    console.log('Frontend:', this.sisaWaktu, '-> Server:', result.sisaWaktu);
-                    this.sisaWaktu = result.sisaWaktu;
-                    this.updateTimer();
-                } else {
-                    console.log('✅ Timer sync OK - selisih', diff, 'detik');
-                }
-            }
-        } catch (error) {
-            console.error('❌ Error syncing timer:', error);
-        }
-    },
-    
-    async waktuHabis() {
-        if (this.isSubmitting) {
-            console.log('⚠️ Sudah dalam proses submit, skip waktuHabis');
-            return;
-        }
-        
-        this.isSubmitting = true;
-        clearInterval(this.interval);
-        clearInterval(this.syncInterval);
-        
-        console.log('⏰ Waktu habis! Memanggil server...');
-        
-        // Tampilkan loading indicator
-        const timerContainer = document.getElementById('timer-container');
-        if (timerContainer) {
-            timerContainer.innerHTML = '<div class=\"flex items-center gap-2\"><div class=\"animate-spin rounded-full h-5 w-5 border-b-2 border-red-600\"></div><span class=\"text-red-600 font-bold\">Memproses...</span></div>';
-        }
-        
-        try {
-            await @this.call('waktuHabis');
-        } catch (error) {
-            console.error('❌ Error saat waktu habis:', error);
-            this.isSubmitting = false;
-        }
-    },
-    
-    // Cleanup saat component di-destroy
-    destroy() {
-        if (this.interval) clearInterval(this.interval);
-        if (this.syncInterval) clearInterval(this.syncInterval);
     }
 }">
     <!-- Success/Warning Message -->
@@ -182,28 +51,28 @@
         </div>
     @endif
 
-    <!-- Header Kuis dengan Timer -->
+    <!-- Header Kuis dengan Status Waktu Habis -->
     <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex-1">
                 <div class="flex items-center mb-2">
                     <div
-                        class="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl flex items-center justify-center mr-3 shadow-lg">
-                        <svg class="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        class="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                             stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-purple-900">{{ $kuis->nama_kuis }}</h1>
-                        <p class="text-gray-600 text-sm">Kerjakan dengan teliti dan jujur</p>
+                        <h1 class="text-2xl font-bold text-red-900">{{ $kuis->nama_kuis }}</h1>
+                        <p class="text-gray-600 text-sm">Waktu pengerjaan telah habis</p>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-4 mt-3 text-sm">
                     <div class="flex items-center">
-                        <svg class="w-4 h-4 text-purple-600 mr-1" fill="none" stroke="currentColor"
+                        <svg class="w-4 h-4 text-red-600 mr-1" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -213,229 +82,186 @@
                 </div>
             </div>
 
-            <!-- Timer Display -->
+            <!-- Status Waktu Habis Display -->
             <div id="timer-container" 
-                class="flex items-center gap-3 px-6 py-4 rounded-xl border-2 shadow-lg transition-all duration-300"
-                :class="{
-                    'bg-purple-50 border-purple-200': warna === 'normal',
-                    'bg-yellow-50 border-yellow-300': warna === 'peringatan',
-                    'bg-red-50 border-red-400 animate-pulse': warna === 'kritis'
-                }">
-                <svg class="w-6 h-6 transition-colors duration-300" 
-                    :class="{
-                        'text-purple-700': warna === 'normal',
-                        'text-yellow-700': warna === 'peringatan',
-                        'text-red-700': warna === 'kritis'
-                    }"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="flex items-center gap-3 px-6 py-4 rounded-xl border-2 shadow-lg bg-red-50 border-red-400">
+                <svg class="w-6 h-6 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <div>
-                    <p class="text-xs font-medium transition-colors duration-300"
-                        :class="{
-                            'text-purple-600': warna === 'normal',
-                            'text-yellow-600': warna === 'peringatan',
-                            'text-red-600': warna === 'kritis'
-                        }">Sisa Waktu</p>
-                    <span id="timer-display" 
-                        class="font-bold text-2xl transition-colors duration-300"
-                        :class="{
-                            'text-purple-700': warna === 'normal',
-                            'text-yellow-700': warna === 'peringatan',
-                            'text-red-700': warna === 'kritis'
-                        }">
-                        {{ sprintf('%02d:%02d', floor($sisaWaktu / 60), $sisaWaktu % 60) }}
+                    <p class="text-xs font-medium text-red-600">Status</p>
+                    <span class="font-bold text-2xl text-red-700">
+                        WAKTU HABIS
                     </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- SEMUA Soal Pilihan Ganda -->
-    @if ($currentType === 'pg' && count($soalPG) > 0)
-        <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
-            <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
-                <div>
-                    <h2 class="text-xl font-bold text-purple-900">Soal Pilihan Ganda</h2>
-                    <p class="text-gray-600 text-sm mt-1">Pilih satu jawaban yang paling tepat untuk setiap soal</p>
-                </div>
-                <div class="px-4 py-2 bg-purple-100 rounded-lg">
-                    <span class="text-purple-700 font-bold text-sm">{{ count($soalPG) }} Soal</span>
-                </div>
+    <!-- Informasi Waktu Pengerjaan -->
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Informasi Pengerjaan</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-sm text-blue-600 font-medium mb-1">Waktu Mulai</p>
+                <p class="text-lg font-bold text-blue-900">
+                    {{ $waktuMulai ? $waktuMulai->format('H:i:s') : '-' }}
+                </p>
+                <p class="text-xs text-blue-600">
+                    {{ $waktuMulai ? $waktuMulai->format('d M Y') : '-' }}
+                </p>
             </div>
 
-            <!-- Loop semua soal PG -->
-            <div class="space-y-8">
-                @foreach ($soalPG as $index => $soal)
-                    <div class="pb-6 {{ $index < count($soalPG) - 1 ? 'border-b-2 border-gray-100' : '' }}">
-                        <!-- Pertanyaan -->
-                        <div class="flex items-start gap-4 mb-4">
-                            <div
-                                class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-800 text-white font-bold text-lg flex-shrink-0 shadow-lg">
-                                {{ $index + 1 }}
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900 leading-relaxed">
-                                    {!! $soal['pertanyaan'] !!}
-                                </h3>
-
-                                @if (!empty($soal['gambar_url']))
-                                    <div class="mt-3">
-                                        <img src="{{ asset('storage/' . $soal['gambar_url']) }}" alt="Gambar Soal"
-                                            class="max-w-md rounded-lg shadow-md">
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-
-                        <!-- Opsi Jawaban -->
-                        <div class="space-y-3 ml-16">
-                            @foreach ($soal['opsi'] as $opsi)
-                                <label
-                                    class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition duration-200 
-                                    {{ isset($jawabanSekarang[$soal['id']]) && $jawabanSekarang[$soal['id']] == $opsi['id']
-                                        ? 'border-purple-600 bg-purple-50'
-                                        : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50' }}">
-                                    <input type="radio" name="soal_{{ $soal['id'] }}"
-                                        wire:model="jawabanSekarang.{{ $soal['id'] }}" value="{{ $opsi['id'] }}"
-                                        class="w-5 h-5 text-purple-600 focus:ring-purple-500 border-gray-300">
-                                    <div class="ml-3 flex-1">
-                                        <span class="text-gray-800 font-medium">{{ $opsi['teks_opsi'] }}</span>
-                                    </div>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-                @endforeach
+            <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                <p class="text-sm text-red-600 font-medium mb-1">Waktu Selesai</p>
+                <p class="text-lg font-bold text-red-900">
+                    {{ $waktuSelesai ? $waktuSelesai->format('H:i:s') : '-' }}
+                </p>
+                <p class="text-xs text-red-600">
+                    {{ $waktuSelesai ? $waktuSelesai->format('d M Y') : '-' }}
+                </p>
             </div>
 
-            <!-- Button Lanjut ke Essay -->
-            <div class="flex justify-end pt-6 border-t-2 border-gray-200 mt-6">
-                <button wire:click="lanjutKeEssay"
-                    class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300 transition duration-300 transform hover:scale-[1.02] flex items-center gap-2">
-                    @if (count($soalEssay) > 0)
-                        <span>LANJUTKAN KE ESSAY</span>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                        </svg>
+            <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <p class="text-sm text-purple-600 font-medium mb-1">Durasi Pengerjaan</p>
+                <p class="text-lg font-bold text-purple-900">
+                    @if($durasiPengerjaan)
+                        {{ floor($durasiPengerjaan / 60) }} menit {{ $durasiPengerjaan % 60 }} detik
                     @else
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
-                            </path>
-                        </svg>
-                        <span>KUMPULKAN JAWABAN</span>
+                        -
                     @endif
-                </button>
-            </div>
-        </div>
-    @endif
-
-    <!-- Soal Essay (tetap satu per satu) -->
-    @if ($currentType === 'essay' && $soalSekarang)
-        <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
-            <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
-                <div>
-                    <h2 class="text-xl font-bold text-purple-900">Soal Essay</h2>
-                    <p class="text-gray-600 text-sm mt-1">Tulis jawaban dengan jelas dan lengkap</p>
-                </div>
-                <div class="px-4 py-2 bg-green-100 rounded-lg">
-                    <span class="text-green-700 font-bold text-sm">ESSAY
-                        {{ $currentIndex + 1 }}/{{ count($soalEssay) }}</span>
-                </div>
-            </div>
-
-            <!-- Pertanyaan -->
-            <div class="mb-8">
-                <div class="flex items-start gap-4 mb-6">
-                    <div
-                        class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-green-600 to-green-700 text-white font-bold text-lg flex-shrink-0 shadow-lg">
-                        {{ $currentIndex + 1 }}
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 leading-relaxed">
-                            {!! $soalSekarang['pertanyaan'] !!}
-                        </h3>
-
-                        @if (!empty($soalSekarang['gambar_url']))
-                            <div class="mt-3">
-                                <img src="{{ asset('storage/' . $soalSekarang['gambar_url']) }}" alt="Gambar Soal"
-                                    class="max-w-md rounded-lg shadow-md">
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Textarea Jawaban -->
-                <div class="ml-16">
-                    <label class="block text-sm font-semibold text-purple-700 mb-2">Jawaban Anda:</label>
-                    <div class="relative">
-                        <textarea wire:model="jawabanSekarang" rows="8"
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none transition duration-200 resize-none shadow-sm"
-                            placeholder="Tulis jawaban kamu di sini..."></textarea>
-                        <div class="flex justify-between items-center mt-2">
-                            <span class="text-xs text-gray-500">Jelaskan jawaban Anda secara rinci</span>
-                            <span class="text-xs text-purple-600 font-medium">Minimal 50 karakter</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Button Submit/Next -->
-            <div class="flex justify-end pt-4 border-t-2 border-gray-200">
-                <button wire:click="next"
-                    class="px-8 py-3 bg-gradient-to-r {{ $currentIndex + 1 >= count($soalEssay) ? 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:ring-green-300' : 'from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 focus:ring-purple-300' }} text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 transition duration-300 transform hover:scale-[1.02]">
-                    @if ($currentIndex + 1 >= count($soalEssay))
-                        <span class="flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            KUMPULKAN JAWABAN
-                        </span>
-                    @else
-                        LANJUT
-                    @endif
-                </button>
-            </div>
-        </div>
-    @endif
-
-    <!-- Info Footer -->
-    <div class="bg-white rounded-2xl shadow-lg p-6 mt-6 border border-gray-200">
-        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="text-center md:text-left">
-                <p class="text-gray-700 font-semibold mb-1">Tips Mengerjakan Kuis</p>
-                <p class="text-gray-500 text-sm">Perhatikan sisa waktu dan pastikan semua jawaban tersimpan</p>
-            </div>
-            <div class="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
-                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="text-purple-700 text-sm font-medium">Jawaban akan tersimpan otomatis</span>
+                </p>
+                <p class="text-xs text-purple-600">Total waktu yang digunakan</p>
             </div>
         </div>
     </div>
+
+    <!-- Status Penilaian -->
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-200">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Status Penilaian</h2>
+        
+        @if($statusPenilaian === 'no_essay')
+            <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-blue-900">Tidak Ada Soal Essay</p>
+                        <p class="text-sm text-blue-700">Kuis ini hanya berisi soal pilihan ganda</p>
+                    </div>
+                </div>
+            </div>
+        @elseif($statusPenilaian === 'sedang_proses')
+            <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
+                <div class="flex items-center">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600 mr-3"></div>
+                    <div>
+                        <p class="font-semibold text-yellow-900">Sedang Memproses</p>
+                        <p class="text-sm text-yellow-700">AI sedang menilai jawaban essay Anda...</p>
+                    </div>
+                </div>
+                <button wire:click="refreshStatus" 
+                    class="mt-3 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition">
+                    Refresh Status
+                </button>
+            </div>
+        @elseif($statusPenilaian === 'belum_dinilai')
+            <div class="p-4 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-orange-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-orange-900">Menunggu Penilaian</p>
+                        <p class="text-sm text-orange-700">Jawaban essay Anda sedang dalam antrian penilaian</p>
+                    </div>
+                </div>
+                <button wire:click="refreshStatus" 
+                    class="mt-3 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition">
+                    Refresh Status
+                </button>
+            </div>
+        @elseif($statusPenilaian === 'error')
+            <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-red-900">Terjadi Kesalahan</p>
+                        <p class="text-sm text-red-700">Ada masalah saat menilai jawaban essay. Silakan hubungi pengajar.</p>
+                    </div>
+                </div>
+            </div>
+        @elseif($statusPenilaian === 'selesai')
+            <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-green-900">Penilaian Selesai</p>
+                        <p class="text-sm text-green-700">Semua jawaban telah dinilai. Anda dapat melihat hasilnya sekarang.</p>
+                    </div>
+                </div>
+            </div>
+        @else
+            <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-blue-900">Penilaian Sebagian Selesai</p>
+                        <p class="text-sm text-blue-700">Beberapa jawaban sudah dinilai, yang lain masih dalam proses</p>
+                    </div>
+                </div>
+                <button wire:click="refreshStatus" 
+                    class="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                    Refresh Status
+                </button>
+            </div>
+        @endif
+    </div>
+
+    <!-- Action Buttons -->
+    <div class=>
+    <div class="flex flex-col md:flex-row gap-4 justify-center">
+        <a href="{{ route('kode.kuis') }}"
+               class="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-green-300 transition duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Kembali ke Beranda</span>
+            </a>
+    </div>
+</div>
+
 </div>
 
 @push('scripts')
 <script>
-    // Prevent page reload warning
-    let formSubmitting = false;
-    
-    window.addEventListener('beforeunload', function(e) {
-        if (!formSubmitting) {
-            e.preventDefault();
-            e.returnValue = 'Kuis masih berlangsung. Yakin ingin meninggalkan halaman?';
-            return e.returnValue;
+    // Auto refresh status setiap 30 detik jika masih dalam proses penilaian
+    document.addEventListener('livewire:initialized', () => {
+        const statusPenilaian = '{{ $statusPenilaian }}';
+        
+        if (['sedang_proses', 'belum_dinilai', 'partial'].includes(statusPenilaian)) {
+            console.log('Auto refresh enabled untuk status:', statusPenilaian);
+            
+            const refreshInterval = setInterval(() => {
+                console.log('Auto refreshing status...');
+                @this.call('refreshStatus');
+            }, 30000); // Refresh setiap 30 detik
+            
+            // Cleanup saat navigasi
+            document.addEventListener('livewire:navigating', () => {
+                clearInterval(refreshInterval);
+            });
         }
-    });
-    
-    // Disable warning saat submit
-    document.addEventListener('livewire:navigating', () => {
-        formSubmitting = true;
     });
 </script>
 @endpush
