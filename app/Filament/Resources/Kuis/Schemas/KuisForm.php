@@ -15,6 +15,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
+use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Str;
 
 class KuisForm
@@ -45,6 +46,15 @@ class KuisForm
 
                         Section::make('Waktu dan Jadwal')
                             ->schema([
+                                Grid::make(2)
+                                    ->schema([
+
+                                        DateTimePicker::make('mulai_dari')
+                                            ->label('Mulai Tanggal'),
+
+                                        DateTimePicker::make('berakhir_pada')
+                                            ->label('Selesai Tanggal'),
+                                    ]),
                                 TextInput::make('waktu_pengerjaan')
                                     ->label('Durasi Pengerjaan')
                                     ->numeric()
@@ -52,39 +62,38 @@ class KuisForm
                                     ->suffix('menit')
                                     ->required()
                                     ->helperText('Waktu maksimal mengerjakan'),
-
-                                DateTimePicker::make('mulai_dari')
-                                    ->label('Mulai Tanggal'),
-
-                                DateTimePicker::make('berakhir_pada')
-                                    ->label('Selesai Tanggal'),
                             ]),
 
                         Section::make('Pengaturan')
                             ->schema([
-                                Toggle::make('acak_soal')
-                                    ->label('Acak Urutan Soal')
-                                    ->helperText('Soal akan muncul acak untuk setiap peserta'),
+                                Grid::make(2)
+                                    ->schema([
 
-                                Toggle::make('acak_opsi')
-                                    ->label('Acak Pilihan Jawaban')
-                                    ->helperText('Pilihan jawaban diacak untuk setiap soal'),
+                                        Toggle::make('acak_soal')
+                                            ->label('Acak Urutan Soal')
+                                            ->helperText('Soal akan muncul acak untuk setiap peserta'),
 
-                                Toggle::make('tampilkan_hasil')
-                                    ->label('Tampilkan Nilai')
-                                    ->default(true)
-                                    ->helperText('Tampilkan hasil setelah selesai'),
+                                        Toggle::make('acak_opsi')
+                                            ->label('Acak Pilihan Jawaban')
+                                            ->helperText('Pilihan jawaban diacak untuk setiap soal'),
 
-                                Select::make('status')
-                                    ->label('Status')
-                                    ->options([
-                                        'draft' => 'Draft',
-                                        'aktif' => 'Aktif',
-                                        'selesai' => 'Selesai',
-                                        'arsip' => 'Arsip',
+                                        Toggle::make('tampilkan_hasil')
+                                            ->label('Tampilkan Nilai')
+                                            ->default(true)
+                                            ->hidden()
+                                            ->helperText('Tampilkan hasil setelah selesai'),
+
+                                        Select::make('status')
+                                            ->label('Status')
+                                            ->options([
+                                                'draft' => 'Draft',
+                                                'aktif' => 'Aktif',
+                                                'selesai' => 'Selesai',
+                                                'arsip' => 'Arsip',
+                                            ])
+                                            ->default('draft')
+                                            ->required(),
                                     ])
-                                    ->default('draft')
-                                    ->required(),
                             ]),
                     ]),
 
@@ -92,10 +101,6 @@ class KuisForm
                     ->label('Soal Pilihan Ganda')
                     ->description('Tambah soal pilihan ganda')
                     ->components([
-
-                        Placeholder::make('info')
-                            ->label('')
-                            ->content('Setiap soal harus memiliki minimal 2 pilihan jawaban'),
 
                         Repeater::make('soalPilihanGanda')
                             ->relationship()
@@ -149,10 +154,6 @@ class KuisForm
                     ->label('Soal Essay')
                     ->description('Tambah soal essay')
                     ->components([
-
-                        Placeholder::make('info')
-                            ->label('')
-                            ->content('Soal essay akan dinilai secara manual'),
 
                         Repeater::make('soalEssay')
                             ->relationship()
@@ -210,8 +211,8 @@ class KuisForm
                                     ->content(
                                         fn($get) =>
                                         "Acak soal: " . ($get('acak_soal') ? 'Ya' : 'Tidak') . "\n" .
-                                            "Acak opsi: " . ($get('acak_opsi') ? 'Ya' : 'Tidak') . "\n" .
-                                            "Tampilkan nilai: " . ($get('tampilkan_hasil') ? 'Ya' : 'Tidak')
+                                            "Acak opsi: " . ($get('acak_opsi') ? 'Ya' : 'Tidak')
+
                                     ),
                             ]),
                     ]),

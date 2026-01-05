@@ -234,10 +234,12 @@
 
         var WAKTU_SELESAI = {{ $waktuSelesai ?? 0 }};
         var TIMER_ACTIVE = {{ $timerActive ? 'true' : 'false' }};
+        var HASIL_ID = '{{ $hasilKuis->id }}';
 
         console.log('📊 Data:', {
             waktuSelesai: WAKTU_SELESAI,
             timerActive: TIMER_ACTIVE,
+            hasilId: HASIL_ID,
             date: new Date(WAKTU_SELESAI * 1000).toLocaleString('id-ID'),
             sisaWaktuHitung: Math.max(0, WAKTU_SELESAI - Math.floor(Date.now() / 1000))
         });
@@ -258,10 +260,11 @@
         if (sisaWaktuReal <= 0) {
             console.log('⚠️ Waktu sudah habis saat load, langsung panggil waktuHabis');
             setTimeout(function() {
-                const comp = Livewire.find(document.querySelector('[wire\\:id]'));
-                if (comp) comp.call('waktuHabis');
-                else {
-                    window.location.href = "/kuis/waktu-habis/{{ $hasilKuis->id }}";
+                var comp = Livewire.find(document.querySelector('[wire\\:id]'));
+                if (comp) {
+                    comp.call('waktuHabis');
+                } else {
+                    window.location.href = "/kuis/waktu-habis/" + HASIL_ID;
                 }
             }, 1000);
             return;
@@ -281,6 +284,7 @@
 
             var timerInterval;
             var updateCount = 0;
+            var waktuHabisTriggered = false;
 
             function update() {
                 updateCount++;
@@ -292,7 +296,9 @@
                 var s = sisa % 60;
                 displayEl.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
 
-                if (updateCount % 5 === 0) console.log('⏱️ Update #' + updateCount + ' - Sisa: ' + sisa + 's');
+                if (updateCount % 5 === 0) {
+                    console.log('⏱️ Update #' + updateCount + ' - Sisa: ' + sisa + 's');
+                }
 
                 // Warna dan animasi
                 if (containerEl) {
@@ -320,15 +326,35 @@
                     }
                 }
 
-                if (sisa <= 0) {
+                if (sisa <= 0 && !waktuHabisTriggered) {
+                    waktuHabisTriggered = true;
                     console.log('⏰ WAKTU HABIS!');
                     clearInterval(timerInterval);
 
+                    // Disable semua input
+                    var inputs = document.querySelectorAll('input, textarea, button');
+                    inputs.forEach(function(input) {
+                        input.disabled = true;
+                    });
+
+                    // Update UI timer
+                    if (displayEl) {
+                        displayEl.textContent = '00:00';
+                    }
+                    if (containerEl) {
+                        containerEl.innerHTML =
+                            '<div class="flex items-center gap-2"><svg class="animate-spin h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-red-600 font-semibold">Waktu Habis...</span></div>';
+                    }
+
+                    // Tunggu sebentar lalu redirect
                     setTimeout(function() {
-                        const comp = Livewire.find(document.querySelector('[wire\\:id]'));
-                        if (comp) comp.call('waktuHabis');
-                        else {
-                            window.location.href = "/kuis/waktu-habis/{{ $hasilKuis->id }}";
+                        var comp = Livewire.find(document.querySelector('[wire\\:id]'));
+                        if (comp) {
+                            console.log('✅ Memanggil waktuHabis() via Livewire');
+                            comp.call('waktuHabis');
+                        } else {
+                            console.log('⚠️ Livewire component tidak ditemukan, redirect manual');
+                            window.location.href = "/kuis/waktu-habis/" + HASIL_ID;
                         }
                     }, 500);
                 }
@@ -355,5 +381,23 @@
         } else {
             startTimer();
         }
+
+        // Handle visibility change (ketika user switch tab)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                var sisaWaktu = Math.max(0, WAKTU_SELESAI - Math.floor(Date.now() / 1000));
+                console.log('👁️ Tab aktif kembali, cek sisa waktu:', sisaWaktu);
+
+                if (sisaWaktu <= 0 && TIMER_ACTIVE) {
+                    console.log('⚠️ Waktu habis saat tab tidak aktif, redirect...');
+                    var comp = Livewire.find(document.querySelector('[wire\\:id]'));
+                    if (comp) {
+                        comp.call('waktuHabis');
+                    } else {
+                        window.location.href = "/kuis/waktu-habis/" + HASIL_ID;
+                    }
+                }
+            }
+        });
     })();
 </script>

@@ -100,10 +100,9 @@ class Kuis extends Component
         $this->setupTimer();
 
         // Cek apakah waktu sudah habis
-        if ($this->sisaWaktu <= 0 && $this->timerActive) {
+        if ($this->sisaWaktu <= 0) {
             Log::warning('Waktu sudah habis saat mount');
-            $this->waktuHabis();
-            return;
+            return $this->waktuHabis();
         }
 
         // Ambil soal PG dan Essay
@@ -315,8 +314,7 @@ class Kuis extends Component
             $this->hasilKuis->refresh();
 
             if ($this->hasilKuis->status !== 'sedang_mengerjakan') {
-                $this->redirectRoute('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]);
-                return;
+                return $this->redirect(route('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]), navigate: true);
             }
 
             // Simpan jawaban
@@ -336,12 +334,12 @@ class Kuis extends Component
 
             $this->timerActive = false;
 
-            // Redirect Livewire
-            $this->redirectRoute('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]);
+            // FIX: Ganti redirectRoute jadi redirect
+            return $this->redirect(route('kuis.waktu-habis', ['hasil' => $this->hasilKuis->id]), navigate: true);
         } catch (\Exception $e) {
             Log::error('Error waktuHabis', ['error' => $e->getMessage()]);
             session()->flash('error', 'Terjadi kesalahan.');
-            $this->redirectRoute('kode.kuis');
+            return $this->redirect(route('kode.kuis'), navigate: true);
         }
     }
 
@@ -411,7 +409,7 @@ class Kuis extends Component
         $this->timerActive = false;
 
         session()->flash('success', 'Kuis berhasil dikumpulkan!');
-        return redirect()->route('kuis.result-kuis', ['hasil' => $this->hasilKuis->id]);
+        return $this->redirect(route('kuis.result-kuis', ['hasil' => $this->hasilKuis->id]), navigate: true);
     }
 
     protected function prosesSelesaiKuis()

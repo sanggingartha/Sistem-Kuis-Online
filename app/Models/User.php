@@ -23,7 +23,9 @@ class User extends Authenticatable
         'password',
         'role',
         'email_verified_at',
-        'is_email_verified'
+        'is_email_verified',
+        'failed_attempts',
+        'locked_until',
     ];
 
     /**
@@ -45,6 +47,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'locked_until' => 'datetime',
             'is_email_verified' => 'boolean',
             'password' => 'hashed',
         ];

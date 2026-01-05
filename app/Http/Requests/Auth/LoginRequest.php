@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -11,51 +12,66 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email' => [
+                'required',
+                'email',
+                'regex:/^[A-Za-z0-9@._]+$/'
+            ],
             'password' => ['required', 'string'],
         ];
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * AUTH + BRUTE FORCE + LOCK 2 JAM
      */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        $user = User::where('email', $this->email)->first();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
-
+        // Cek akun terkunci
+        if ($user && $user->locked_until && now()->lessThan($user->locked_until)) {
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Akun terkunci sampai ' . $user->locked_until->format('d M Y H:i'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
+        if (! Auth::attempt($this->only('email', 'password'))) {
+
+            if ($user) {
+                $user->increment('failed_attempts');
+
+                if ($user->failed_attempts >= 5) {
+                    $user->update([
+                        'locked_until' => now()->addHours(2),
+                        'failed_attempts' => 0,
+                    ]);
+                }
+            }
+
+            throw ValidationException::withMessages([
+                'email' => 'Email atau password salah.',
+            ]);
+        }
+
+        // Reset saat sukses
+        if ($user) {
+            $user->update([
+                'failed_attempts' => 0,
+                'locked_until' => null,
+            ]);
+        }
     }
 
     /**
-     * Ensure the login request is not rate limited.
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * RATE LIMIT CHECK
      */
     public function ensureIsNotRateLimited(): void
     {
@@ -68,18 +84,15 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => "Terlalu banyak percobaan login. Coba lagi dalam {$seconds} detik.",
         ]);
     }
 
     /**
-     * Get the rate limiting throttle key for the request.
+     * KEY = email + IP
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::lower($this->string('email')) . '|' . $this->ip();
     }
 }
