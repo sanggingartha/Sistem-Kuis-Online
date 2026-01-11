@@ -70,12 +70,10 @@ class KuisForm
                                     ->schema([
 
                                         Toggle::make('acak_soal')
-                                            ->label('Acak Urutan Soal')
-                                            ->helperText('Soal akan muncul acak untuk setiap peserta'),
+                                            ->label('Acak Urutan Soal'),
 
                                         Toggle::make('acak_opsi')
-                                            ->label('Acak Pilihan Jawaban')
-                                            ->helperText('Pilihan jawaban diacak untuk setiap soal'),
+                                            ->label('Acak Pilihan Jawaban'),
 
                                         Toggle::make('tampilkan_hasil')
                                             ->label('Tampilkan Nilai')

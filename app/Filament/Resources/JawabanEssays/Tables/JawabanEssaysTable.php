@@ -33,7 +33,7 @@ class JawabanEssaysTable
                     ->numeric()
                     ->sortable()
                     ->badge()
-                    ->color(fn ($state) => $state >= 70 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
+                    ->color(fn($state) => $state >= 70 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
                 TextColumn::make('poin_diperoleh')
                     ->numeric()
                     ->sortable(),
@@ -62,11 +62,11 @@ class JawabanEssaysTable
                     ->label('Nilai Ulang AI')
                     ->icon('heroicon-o-sparkles')
                     ->color('primary')
-                    ->visible(fn ($record) => in_array($record->status_penilaian, ['belum_dinilai', 'error']))
+                    ->visible(fn($record) => in_array($record->status_penilaian, ['belum_dinilai', 'error']))
                     ->requiresConfirmation()
                     ->action(function ($record, GeminiService $gemini) {
                         $result = $gemini->nilaiJawabanEssay($record);
-                        
+
                         if ($result['success']) {
                             Notification::make()
                                 ->title('Penilaian Berhasil')
@@ -81,7 +81,7 @@ class JawabanEssaysTable
                                 ->send();
                         }
                     }),
-                    
+
                 EditAction::make(),
             ])
             ->toolbarActions([

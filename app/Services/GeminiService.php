@@ -37,7 +37,7 @@ class GeminiService
                     ]
                 ]
             );
-            
+
             return [
                 'success' => true,
                 'data' => $response->json()
@@ -56,7 +56,7 @@ class GeminiService
     public function nilaiJawabanEssay(JawabanEssay $jawabanEssay): array
     {
         $startTime = microtime(true);
-        
+
         try {
             // Update status
             $jawabanEssay->update(['status_penilaian' => 'sedang_proses']);
@@ -64,16 +64,16 @@ class GeminiService
             // Load relasi
             $jawabanEssay->load('soal');
             $soal = $jawabanEssay->soal;
-            
+
             // Buat prompt
             $prompt = $this->buatPrompt($soal, $jawabanEssay);
 
             // Kirim ke Gemini
             $responseData = $this->kirimKeGemini($prompt);
-            
+
             // Parse response
             $hasil = $this->parseResponse($responseData);
-            
+
             // Hitung waktu proses (ms)
             $waktuProses = (int) round((microtime(true) - $startTime) * 1000);
 
@@ -86,10 +86,9 @@ class GeminiService
                 'feedback' => $hasil['feedback'],
                 'waktu_proses' => $waktuProses,
             ];
-
         } catch (\Exception $e) {
             $this->handleError($jawabanEssay, $e, $prompt ?? '');
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -105,7 +104,7 @@ class GeminiService
         $pertanyaan = strip_tags($soal->pertanyaan);
         $kunci = $soal->jawaban_acuan ?? 'Tidak ada kunci';
         $jawaban = $jawabanEssay->jawaban_siswa;
-        
+
         // PROMPT SANGAT RINGKAS untuk hemat token
         $prompt = "Nilai essay ini 0-100:\n\n";
         $prompt .= "Q: {$pertanyaan}\n";
@@ -113,7 +112,7 @@ class GeminiService
         $prompt .= "Jawaban: {$jawaban}\n\n";
         $prompt .= "Output JSON saja:\n";
         $prompt .= '{"skor":85,"feedback":"Singkat 1-2 kalimat"}';
-        
+
         return $prompt;
     }
 
@@ -169,7 +168,7 @@ class GeminiService
                 $rawText .= $part['text'];
             }
         }
-        
+
         if (empty($rawText)) {
             throw new \Exception("Response kosong dari AI");
         }
@@ -182,7 +181,7 @@ class GeminiService
 
         // Clean JSON
         $cleaned = $this->aggressiveCleanJson($rawText);
-        
+
         Log::info('=== CLEANED TEXT ===', ['cleaned' => $cleaned]);
 
         // HANDLE INCOMPLETE JSON (jika MAX_TOKENS)
@@ -194,7 +193,7 @@ class GeminiService
 
         // Parse JSON
         $decoded = json_decode($cleaned, true);
-        
+
         if ($decoded === null) {
             $jsonError = json_last_error_msg();
             Log::error('=== JSON DECODE FAILED ===', [
@@ -242,7 +241,7 @@ class GeminiService
         $openBraces = substr_count($text, '{');
         $closeBraces = substr_count($text, '}');
         $openQuotes = substr_count($text, '"');
-        
+
         // JSON lengkap jika:
         // 1. Jumlah { dan } sama
         // 2. Jumlah " genap
@@ -259,16 +258,16 @@ class GeminiService
             // Tutup string yang belum ditutup
             $text .= '"';
         }
-        
+
         // Tutup JSON object jika belum
         $openBraces = substr_count($text, '{');
         $closeBraces = substr_count($text, '}');
-        
+
         while ($closeBraces < $openBraces) {
             $text .= '}';
             $closeBraces++;
         }
-        
+
         return $text;
     }
 
@@ -280,26 +279,26 @@ class GeminiService
         // 1. Remove markdown
         $text = preg_replace('/```json\s*/i', '', $text);
         $text = preg_replace('/```\s*/i', '', $text);
-        
+
         // 2. Remove AI prefixes
         $text = preg_replace('/^.*?Here.*?:/im', '', $text);
         $text = preg_replace('/^.*?berikut.*?:/im', '', $text);
         $text = preg_replace('/^.*?JSON.*?:/im', '', $text);
-        
+
         // 3. Extract from first { to last }
         if (preg_match('/(\{.*\})/s', $text, $matches)) {
             $text = $matches[1];
         }
-        
+
         // 4. Remove text before first {
         $firstBrace = strpos($text, '{');
         if ($firstBrace !== false && $firstBrace > 0) {
             $text = substr($text, $firstBrace);
         }
-        
+
         // 5. Clean whitespace but preserve spaces in strings
         $text = trim($text);
-        
+
         return $text;
     }
 
@@ -307,10 +306,10 @@ class GeminiService
      * Simpan Hasil
      */
     private function simpanHasil(
-        JawabanEssay $jawabanEssay, 
-        array $hasil, 
-        string $prompt, 
-        array $responseData, 
+        JawabanEssay $jawabanEssay,
+        array $hasil,
+        string $prompt,
+        array $responseData,
         int $waktuProses
     ): void {
         // Update jawaban essay
@@ -375,13 +374,13 @@ class GeminiService
 
         foreach ($jawabanEssays as $jawaban) {
             $result = $this->nilaiJawabanEssay($jawaban);
-            
+
             if ($result['success']) {
                 $results['success']++;
             } else {
                 $results['failed']++;
             }
-            
+
             $results['details'][] = [
                 'id' => $jawaban->id,
                 'result' => $result
